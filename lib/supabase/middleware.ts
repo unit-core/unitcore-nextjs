@@ -44,7 +44,12 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/auth') &&
     // the OAuth consent route sends unauthenticated visitors to the login page
     // itself, so that it can preserve the authorization in the `next` parameter
-    request.nextUrl.pathname !== '/oauth/consent'
+    request.nextUrl.pathname !== '/oauth/consent' &&
+    // the MCP endpoint and the OAuth discovery documents authenticate with
+    // bearer tokens rather than cookies, so they must answer 401/JSON instead
+    // of redirecting: an MCP client cannot follow a redirect to a login form
+    !request.nextUrl.pathname.startsWith('/api/mcp') &&
+    !request.nextUrl.pathname.startsWith('/.well-known')
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
