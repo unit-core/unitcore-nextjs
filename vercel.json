@@ -2,9 +2,15 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "redirects": [
     {
-      "source": "/:path*",
+      "source": "/",
       "has": [{ "type": "host", "value": "www.unitcore.io" }],
-      "destination": "https://unitcore.io/:path*",
+      "destination": "https://unitcore.io/",
+      "permanent": true
+    },
+    {
+      "source": "/:path+",
+      "has": [{ "type": "host", "value": "www.unitcore.io" }],
+      "destination": "https://unitcore.io/:path+",
       "permanent": true
     }
   ]
