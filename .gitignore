@@ -1,0 +1,66 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# supabase cli (local stack, generated + local-only files)
+supabase/.branches
+supabase/.temp
+supabase/.env
+
+# agent skills — restore with `npx skills install` from skills-lock.json
+.agents/skills/
+.claude/skills/
+
+# agent settings — .claude/settings.json is shared, .local.json is per-developer
+.claude/settings.local.json
+
+# editors
+.idea/
+.vscode/
+.fleet/
+*.swp
+*.swo
+
+# os
+**/.DS_Store
+Thumbs.db
