@@ -20,6 +20,12 @@ const clientFor = (ctx: { http?: { authInfo?: AuthInfo } }): SupabaseClient | nu
   return token ? createUserClient(token) : null
 }
 
+/** spaces.owner_id has no default, and RLS demands it equal auth.uid(). */
+const userIdFor = (ctx: { http?: { authInfo?: AuthInfo } }): string | null => {
+  const userId = ctx.http?.authInfo?.extra?.userId
+  return typeof userId === 'string' ? userId : null
+}
+
 /** Falls back to the user's personal space, which a trigger guarantees exists. */
 async function resolveSpaceId(db: SupabaseClient, spaceId?: string) {
   if (spaceId) return spaceId
@@ -30,7 +36,7 @@ async function resolveSpaceId(db: SupabaseClient, spaceId?: string) {
     .limit(1)
     .maybeSingle()
   if (error) throw new Error(error.message)
-  if (!data) throw new Error('Личное пространство не найдено. Укажите space_id явно.')
+  if (!data) throw new Error('No personal space found. Pass space_id explicitly.')
   return data.id as string
 }
 
@@ -39,15 +45,15 @@ const handler = createMcpHandler(
     server.registerTool(
       'list_spaces',
       {
-        title: 'Список пространств',
+        title: 'List spaces',
         description:
-          'Пространства, доступные пользователю. is_default = true — личное пространство, ' +
-          'оно используется по умолчанию, если space_id не указан.',
+          'Spaces the user has access to. is_default = true marks the personal space, ' +
+          'which is used whenever space_id is omitted.',
         inputSchema: z.object({}),
       },
       async (_args, ctx) => {
         const db = clientFor(ctx)
-        if (!db) return fail('Нет токена доступа.')
+        if (!db) return fail('No access token.')
         const { data, error } = await db
           .from('spaces')
           .select('id, name, is_default, owner_id, created_at')
@@ -59,8 +65,8 @@ const handler = createMcpHandler(
     server.registerTool(
       'list_categories',
       {
-        title: 'Список категорий',
-        description: 'Категории расходов (expense) и доходов (income) в пространстве.',
+        title: 'List categories',
+        description: 'Expense and income categories in a space.',
         inputSchema: z.object({
           space_id: z.string().uuid().optional(),
           kind: z.enum(['expense', 'income']).optional(),
@@ -68,7 +74,7 @@ const handler = createMcpHandler(
       },
       async ({ space_id, kind }, ctx) => {
         const db = clientFor(ctx)
-        if (!db) return fail('Нет токена доступа.')
+        if (!db) return fail('No access token.')
         try {
           const spaceId = await resolveSpaceId(db, space_id)
           let q = db
@@ -88,10 +94,10 @@ const handler = createMcpHandler(
     server.registerTool(
       'list_transactions',
       {
-        title: 'Список транзакций',
+        title: 'List transactions',
         description:
-          'Транзакции с позициями за период. Даты в формате ISO (2026-08-01). ' +
-          'Суммы позиций всегда положительные — расход это или доход, определяет kind категории.',
+          'Transactions with their items for a period. Dates are ISO (2026-08-01). ' +
+          'Item amounts are always positive — the category kind decides expense or income.',
         inputSchema: z.object({
           space_id: z.string().uuid().optional(),
           from: z.string().optional(),
@@ -101,7 +107,7 @@ const handler = createMcpHandler(
       },
       async ({ space_id, from, to, limit }, ctx) => {
         const db = clientFor(ctx)
-        if (!db) return fail('Нет токена доступа.')
+        if (!db) return fail('No access token.')
         try {
           const spaceId = await resolveSpaceId(db, space_id)
 
@@ -151,10 +157,10 @@ const handler = createMcpHandler(
     server.registerTool(
       'summary',
       {
-        title: 'Сводка по категориям',
+        title: 'Category summary',
         description:
-          'Суммы расходов и доходов по категориям за период — отвечает на вопросы вида ' +
-          '"сколько я потратил на еду в июле".',
+          'Expense and income totals per category for a period — answers questions like ' +
+          '"how much did I spend on food in July".',
         inputSchema: z.object({
           space_id: z.string().uuid().optional(),
           from: z.string().optional(),
@@ -163,7 +169,7 @@ const handler = createMcpHandler(
       },
       async ({ space_id, from, to }, ctx) => {
         const db = clientFor(ctx)
-        if (!db) return fail('Нет токена доступа.')
+        if (!db) return fail('No access token.')
         try {
           const spaceId = await resolveSpaceId(db, space_id)
 
@@ -188,7 +194,7 @@ const handler = createMcpHandler(
             const cat = catById.get(item.category_id)
             const key = `${item.category_id}|${item.currency_code}`
             const row = totals.get(key) ?? {
-              category: cat?.name ?? 'Без категории',
+              category: cat?.name ?? 'Uncategorized',
               kind: cat?.kind ?? 'unknown',
               currency: item.currency_code,
               total: 0,
@@ -213,10 +219,67 @@ const handler = createMcpHandler(
     )
 
     server.registerTool(
+      'create_space',
+      {
+        title: 'Create space',
+        description:
+          'A new space owned by the current user. The personal space is created ' +
+          'automatically on sign-up, so there is no need to recreate it here.',
+        inputSchema: z.object({
+          name: z.string().trim().min(1),
+        }),
+      },
+      async ({ name }, ctx) => {
+        const db = clientFor(ctx)
+        const userId = userIdFor(ctx)
+        if (!db || !userId) return fail('No access token.')
+        const { data, error } = await db
+          .from('spaces')
+          .insert({ name, owner_id: userId })
+          .select('id, name, is_default, owner_id, created_at')
+          .single()
+        return error ? fail(error.message) : ok(data)
+      }
+    )
+
+    server.registerTool(
+      'rename_space',
+      {
+        title: 'Rename space',
+        description:
+          'Renames a space. Without space_id the personal space is renamed. ' +
+          'Only the owner of a space can rename it.',
+        inputSchema: z.object({
+          name: z.string().trim().min(1),
+          space_id: z.string().uuid().optional(),
+        }),
+      },
+      async ({ name, space_id }, ctx) => {
+        const db = clientFor(ctx)
+        if (!db) return fail('No access token.')
+        try {
+          const spaceId = await resolveSpaceId(db, space_id)
+          const { data, error } = await db
+            .from('spaces')
+            .update({ name })
+            .eq('id', spaceId)
+            .select('id, name, is_default, owner_id, updated_at')
+            .maybeSingle()
+          if (error) return fail(error.message)
+          // RLS hides spaces the user does not own, so an empty result is a
+          // permission miss, not a database error.
+          return data ? ok(data) : fail('Space not found, or you are not its owner.')
+        } catch (e) {
+          return fail(e instanceof Error ? e.message : String(e))
+        }
+      }
+    )
+
+    server.registerTool(
       'create_category',
       {
-        title: 'Создать категорию',
-        description: 'Новая категория расходов или доходов в пространстве.',
+        title: 'Create category',
+        description: 'A new expense or income category in a space.',
         inputSchema: z.object({
           name: z.string().min(1),
           kind: z.enum(['expense', 'income']),
@@ -225,7 +288,7 @@ const handler = createMcpHandler(
       },
       async ({ name, kind, space_id }, ctx) => {
         const db = clientFor(ctx)
-        if (!db) return fail('Нет токена доступа.')
+        if (!db) return fail('No access token.')
         try {
           const spaceId = await resolveSpaceId(db, space_id)
           const { data, error } = await db
@@ -244,10 +307,10 @@ const handler = createMcpHandler(
     server.registerTool(
       'create_transaction',
       {
-        title: 'Создать транзакцию',
+        title: 'Create transaction',
         description:
-          'Создаёт транзакцию с позициями. Суммы всегда положительные: расход это или доход, ' +
-          'определяет kind категории. Позиции наследуют дату и валюту от транзакции.',
+          'Creates a transaction with its items. Amounts are always positive: the category ' +
+          'kind decides expense or income. Items inherit date and currency from the transaction.',
         inputSchema: z.object({
           items: z
             .array(
@@ -266,7 +329,7 @@ const handler = createMcpHandler(
       },
       async ({ items, title, occurred_at, currency_code, space_id }, ctx) => {
         const db = clientFor(ctx)
-        if (!db) return fail('Нет токена доступа.')
+        if (!db) return fail('No access token.')
         try {
           const spaceId = await resolveSpaceId(db, space_id)
 
@@ -301,7 +364,7 @@ const handler = createMcpHandler(
           if (itemsError) {
             // Keep the books clean: a transaction with no items is not useful.
             await db.schema('budget').from('transactions').delete().eq('id', tx.id)
-            return fail(`Позиции не сохранены, транзакция отменена: ${itemsError.message}`)
+            return fail(`Items were not saved, the transaction was rolled back: ${itemsError.message}`)
           }
 
           return ok({ transaction: tx, items: rows })
