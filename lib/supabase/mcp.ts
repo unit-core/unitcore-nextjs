@@ -13,13 +13,19 @@ const JWKS = createRemoteJWKSet(new URL(`${ISSUER}/.well-known/jwks.json`))
 export interface VerifiedToken {
   userId: string
   email?: string
-  clientId?: string
+  clientId: string
   scopes: string[]
 }
 
 /**
  * Verifies a Supabase-issued OAuth access token. Returns null on any failure —
  * callers translate that into a 401 rather than leaking the reason.
+ *
+ * A `client_id` claim is required, which is what separates an OAuth token from
+ * a web session token. Both are signed by the same issuer and both carry
+ * `aud: authenticated`, so without this check a session token lifted from a
+ * browser would work as an MCP key — one the user cannot see under
+ * /settings/connections and cannot revoke, because no grant was ever created.
  */
 export async function verifySupabaseToken(token: string): Promise<VerifiedToken | null> {
   try {
@@ -29,13 +35,14 @@ export async function verifySupabaseToken(token: string): Promise<VerifiedToken 
     })
 
     if (!payload.sub) return null
+    if (typeof payload.client_id !== 'string' || !payload.client_id) return null
 
     const scope = typeof payload.scope === 'string' ? payload.scope : ''
 
     return {
       userId: payload.sub,
       email: typeof payload.email === 'string' ? payload.email : undefined,
-      clientId: typeof payload.client_id === 'string' ? payload.client_id : undefined,
+      clientId: payload.client_id,
       scopes: scope.split(' ').filter(Boolean),
     }
   } catch {
