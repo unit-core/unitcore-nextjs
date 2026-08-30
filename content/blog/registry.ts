@@ -36,18 +36,18 @@ const articles: readonly Article[] = [
   {
     slug: 'unitcore-setup',
     date: '2026-08-30',
-    tags: ['mcp', 'setup', 'oauth'],
+    tags: ['mcp', 'setup', 'oauth', 'claude'],
     translations: {
       en: {
-        title: 'Connect your AI client to a unitcore budget',
+        title: 'Connect unitcore to Claude',
         description:
-          'Set up the unitcore MCP server in an AI client over OAuth, and understand what that client can and cannot do with your data.',
+          'A step-by-step setup, the one OAuth setting that trips people up, and what Claude can and cannot do with your budget once it is connected.',
         load: () => import('./unitcore-setup/en.mdx'),
       },
       ru: {
-        title: 'Подключаем AI-клиент к бюджету в unitcore',
+        title: 'Подключите unitcore к Claude',
         description:
-          'Настройка MCP-сервера unitcore в AI-клиенте через OAuth и что этот клиент может и не может делать с вашими данными.',
+          'Пошаговая настройка, единственная настройка OAuth, на которой все спотыкаются, и что Claude может и не может делать с вашим бюджетом после подключения.',
         load: () => import('./unitcore-setup/ru.mdx'),
       },
     },

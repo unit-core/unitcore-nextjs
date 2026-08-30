@@ -1,13 +1,153 @@
 import { Callout } from '@/components/blog/callout'
+import { CopyField } from '@/components/blog/copy-field'
+import { InstallButton } from '@/components/blog/install-button'
+import { claudeInstallUrl, CONNECTOR_NAME, MCP_URL } from '@/lib/connectors'
 
-unitcore has no forms to fill in. Its primary interface is an [MCP](https://modelcontextprotocol.io)
-server, so you keep your budget by talking to the AI client you already use: *"add 1200 for
-groceries yesterday"*, *"how much did I spend on food in July?"*.
+A budget in unitcore is kept by talking: "log 1200 on groceries yesterday", "how much did
+I spend on food in July". There are no forms to fill in, because the application's primary
+interface is an [MCP](https://modelcontextprotocol.io) server that Claude connects to as
+one of its own tools.
 
-This guide connects a client to your budget and explains what that client can, and cannot, do
-once it is connected.
+Connecting takes a couple of minutes and happens once per account: a connector added in
+the browser works in the desktop app and on your phone too.
 
-## What you get
+## Connect in one click
+
+<InstallButton
+  href={claudeInstallUrl()}
+  note="Opens claude.ai with the name and server address already filled in. The link only prefills the form — adding the connector and signing in to unitcore is still yours to do."
+>
+  Add unitcore to Claude
+</InstallButton>
+
+If you are adding the connector by hand, this is the only value you will have to type:
+
+<CopyField label="Remote MCP server URL" value={MCP_URL} />
+
+No keys, no tokens, no passwords go anywhere — access is granted through your ordinary
+unitcore account.
+
+<Callout type="warning">
+  **One setting you have to choose yourself.** In the add dialog, under **OAuth client**,
+  pick **"No client ID — register one automatically"**. unitcore's authorization server
+  does not advertise pre-arranged client metadata, and the connection will break on the
+  way back from the browser. Step 3 explains why.
+</Callout>
+
+## Before you start
+
+- **Sign in to unitcore in this same browser.** Then the authorization step takes you
+  straight to the consent screen instead of a login form.
+- **Any Claude plan will do, including the free one.** The free plan allows a single
+  custom connector, so the slot is worth spending deliberately.
+- **On Team or Enterprise:** custom connectors are added by the organization owner. They
+  need{' '}
+  <a href={claudeInstallUrl('organization')} target="_blank" rel="noopener noreferrer">the same link, pointed at the admin page</a>;
+  after that all you do is press **Connect**.
+
+## Step 1. Open the connector dialog
+
+The button above opens it directly. By hand:
+
+| Where you work | What to do |
+| --- | --- |
+| **Claude in the browser** | Avatar in the top right → **Settings** → **Customize** → **Connectors** |
+| **Claude Desktop** | `⌘ ,` or `Ctrl ,` → **Customize** → **Connectors** |
+| **Claude on your phone** | Connectors are added from a computer only. Add it once and it shows up on the phone by itself |
+
+Under **Connectors**, press **+** and choose **Add custom connector**.
+
+## Step 2. Name and address
+
+<CopyField label="Name" value={CONNECTOR_NAME} />
+
+<CopyField label="Remote MCP server URL" value={MCP_URL} />
+
+The name is only a label — it is how you recognize this connection in the list, and it
+grants nothing. Claude then checks the address and fills in the auth settings itself.
+
+## Step 3. OAuth client
+
+The one item worth setting deliberately:
+
+> **No client ID — register one automatically**
+
+The reason is visible in how the connection is made. Claude first requests
+`/.well-known/oauth-protected-resource`, the document from
+[RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728) that says which authorization
+server issues tokens for this resource. That server advertises a `registration_endpoint`
+and does not advertise a client ID metadata document, which leaves exactly one working
+path: the client registers itself dynamically and gets a fresh client id for this
+connection.
+
+Leave the rest alone:
+
+| Field | Value |
+| --- | --- |
+| **Authentication** | sign-in through your unitcore account, detected automatically |
+| **Request headers** | leave empty — there are no API keys here |
+| **Advanced → Transport** | filled in from the address |
+
+<Callout type="warning">
+  Auth settings cannot be changed on a connector that already exists. If you got them
+  wrong, **Remove** it and add it again.
+</Callout>
+
+Press **Add**.
+
+## Step 4. Sign in and approve
+
+A card appears in the connector list. Press **Connect** and a browser window opens — with
+a login form first, if you are not signed in to unitcore yet.
+
+Then comes the unitcore consent screen. Three rows on it are worth actually reading:
+
+- **Client** — the name of the client asking for access;
+- **Redirects to** — where you will be returned; for Claude that is
+  `https://claude.ai/api/mcp/auth_callback`;
+- **Signed in as** — whether this is your unitcore account.
+
+**Allow access** issues the token; **Deny** ends the flow and no access is granted. After
+you approve, the window closes itself and the connector card goes live.
+
+## Step 5. Turn the connector on in a conversation
+
+The connector is attached to your account, but each chat enables it separately: in the
+composer, press **+** → **Connectors** and switch unitcore on.
+
+## Step 6. Check that it works
+
+<CopyField multiline value="Show me my unitcore spaces" />
+
+Claude will ask you to approve the tool call — press **Allow**, or **Allow always** to
+stop being asked. The answer should contain your personal space, created automatically
+when you signed up. If you see it, you are connected.
+
+## Your first conversations
+
+Ready-made phrases you can copy as they are.
+
+<CopyField multiline value="Log this in unitcore: groceries, 1200, yesterday" />
+
+<CopyField
+  multiline
+  value="Log a 2340 purchase: milk 89, bread 65, cheese 420, the rest is groceries"
+/>
+
+<CopyField multiline value="How much did I spend this month? Break it down by category" />
+
+Three things about the data model are worth knowing, because they explain the answers you
+get back:
+
+- **Spaces** are the scope of a budget. The personal one is created at sign-up and is used
+  whenever you do not name another. A space can be shared with other people.
+- **Categories** live inside a space and are either `expense` or `income`. If no fitting
+  one exists, Claude will offer to create it.
+- **Transactions** are made of items whose amounts are always positive. The category kind
+  decides the sign, and that is decided in the database — not in the client, and not by
+  how you phrased it. The default currency is the rouble.
+
+## What Claude can do
 
 Eight tools, split by what they touch:
 
@@ -18,92 +158,97 @@ Eight tools, split by what they touch:
 | `list_transactions` | `create_category` |
 | `summary` | `create_transaction` |
 
-`summary` is the one that answers most questions: it returns per-category expense and income
-totals for a period.
+`summary` answers most questions: it returns expense and income totals per category for a
+period.
 
-## Before you start
-
-- A unitcore account.
-- An MCP client that supports remote servers over HTTP with OAuth.
-
-There is no API key to copy and no config file to edit by hand.
-
-## Add the server
-
-One value goes into your client:
-
-```
-https://unitcore.io/api/mcp
-```
-
-## What happens when you connect
-
-This part looks like magic, and it helps to know that it is not:
-
-1. The client fetches `/.well-known/oauth-protected-resource`. That document, defined by
-   [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728), tells it which authorization
-   server issues tokens for this resource.
-2. The client registers itself dynamically, minting a fresh client id for this connection.
-3. You sign in to unitcore.
-4. You land on the consent screen.
-
-## The consent screen
-
-Three things on it are worth an actual look before you approve: the **client name**, the
-**redirect URI** it will send you back to, and whether the **account email** shown is yours.
-Approving is what mints the token; denying ends the flow and nothing is granted.
-
-## Your first conversation
-
-| You say | The client calls |
+| You say | Claude calls |
 | --- | --- |
-| "Which spaces do I have?" | `list_spaces` |
-| "Add 1200 for groceries yesterday" | `create_transaction` |
+| "What spaces do I have?" | `list_spaces` |
+| "Create a space called Holiday" | `create_space` |
+| "What expense categories do I have?" | `list_categories` |
+| "Add a category for transport" | `create_category` |
+| "Log 1200 on groceries yesterday" | `create_transaction` |
+| "Show me the café spending for August" | `list_transactions` |
 | "How much did I spend on food in July?" | `summary` |
-| "Create a category for transport" | `create_category` |
-
-Three things about the model are worth knowing, because they explain the answers you get:
-
-- **Spaces** are budget scopes. A personal one is created for you at sign-up and is used whenever
-  you do not name another. A space can be shared with other people.
-- **Categories** are per-space and are either `expense` or `income`.
-- **Transactions** are made of items whose amounts are always positive. The category kind decides
-  the sign, in the database — not in the client, and not in your phrasing.
-
-## Why this is safe to connect
-
-Connecting an AI client to your finances deserves more than a reassuring sentence. The rule is
-that **a tool acts as the user who called it, and never as anyone else**, and three things keep
-that rule from eroding:
-
-- **Isolation is Postgres, not tool code.** Requests carry your OAuth access token, and Row Level
-  Security decides what comes back. Nothing in the tool bodies enforces isolation, so nothing in
-  them can accidentally undo it.
-- **Only OAuth tokens are accepted.** Verification requires a `client_id` claim, so a web session
-  token lifted from a browser is not a key to this server.
-- **A service-role key cannot reach the tools.** That key bypasses RLS, and the build fails if
-  the MCP code so much as reads a `SECRET` or `SERVICE_ROLE` environment variable.
-
-There is also an end-to-end test that drives every read tool as one user and fails if any
-identifier belonging to another user appears in what a tool returns.
-
-<Callout type="note">
-  The full write-up lives in the project README, under "MCP server and data isolation".
-</Callout>
 
 ## What a connected client cannot do
 
-- **It cannot delete.** Removing a space, a profile or a membership is impossible from an OAuth
-  token; that path exists only in the web session, where a human sees a confirmation dialog.
-- **It may not be able to write at all.** Writing is limited to clients listed in an allow-list,
-  matched by name and redirect URI. An unlisted client can read and nothing else — so if reads
-  work and writes silently do nothing, this is why.
+- **It cannot delete.** Deleting a space, a profile or a membership with an OAuth token is
+  impossible: the database policies let a delete through only when the token carries no
+  `client_id` — that is, from the web session, where a human sees a confirmation dialog.
+- **It may have no write access at all.** Writing is limited to clients on a list matched
+  by name and redirect URI. A client that is not on it can read and nothing else — so if
+  reads work and writes quietly do nothing, that is why.
 
-## When something goes wrong
+Worth spelling out, because it sounds like permissions but is built differently: this is
+**not an OAuth scope**. The token carries nothing like "read only" — the decision is made
+by policies in Postgres, every time.
+
+## Why this is safe to connect
+
+Connecting an AI client to your finances deserves more than a reassuring sentence. The
+rule is this: **a tool acts as the user who called it, and never as anyone else**, and
+three things keep that rule from eroding:
+
+- **Isolation is enforced by Postgres, not by tool code.** The request carries your OAuth
+  token, and Row Level Security decides what comes back. Nothing in the tool bodies
+  enforces isolation, so nothing in them can accidentally undo it.
+- **Only OAuth tokens are accepted.** Verification requires a `client_id` claim, so a web
+  session lifted from a browser is not a key to this server.
+- **A service-role key cannot reach the tools.** That key bypasses RLS, and the build
+  fails if the MCP code so much as reads an environment variable named `SECRET` or
+  `SERVICE_ROLE`.
+
+There is an end-to-end test as well: it drives every read tool as one user and fails if an
+identifier belonging to another shows up in the answer.
+
+<Callout type="note">
+  The full account is in the project README, under "MCP server and data isolation".
+</Callout>
+
+## How to disconnect
+
+- **Selectively:** in the connector card, any tool can be set to **Blocked**. Block
+  `create_transaction` and `create_category` and Claude can read and reckon but write
+  nothing.
+- **Entirely:** **Customize** → **Connectors** → unitcore → **Remove**. The client loses
+  the ability to renew access; the issued token is short-lived and Claude refreshes it
+  itself only while the connection exists.
+
+## If something goes wrong
 
 | What you see | What it means |
 | --- | --- |
-| `401` | The token expired, or a browser session token was used. Reconnect the client. |
-| "No access token." | The request reached the server without a bearer token. |
-| "No personal space found. Pass space_id explicitly." | No default space to fall back on — name the space in your request. |
-| Reads work, writes do nothing | The client is not on the write allow-list. |
+| You approved and came back to an authorization error | Almost always the setting from step 3. It cannot be changed on an existing connector: **Remove** it and add it again, choosing **"No client ID — register one automatically"** |
+| **Connect** opens nothing | The browser blocked the popup. Allow popups for claude.ai and retry |
+| Claude says it has no access to unitcore | The connector is not on in this chat: **+** → **Connectors** → unitcore |
+| `401` | The token expired, or a browser session token was used. Reconnect the client |
+| `No access token.` | The request reached the server without a bearer token |
+| `No personal space found. Pass space_id explicitly.` | There is no default space — name the space in your request |
+| The list of spaces is empty | You signed in to a different unitcore account. Remove the connector, sign out of the extra account and connect again |
+| Reads work, writes do not | The client is not on the write allow-list |
+| No **Add custom connector** item | You are on Team or Enterprise: the organization owner adds the connector first |
+
+## Other clients
+
+The server address is the same one, and Cursor, ChatGPT and other MCP-capable clients
+understand it — reading will work there just as well. But the write allow-list currently
+holds Claude and nothing else, so expect read-only elsewhere: that is not a broken
+connection, it is the rule from the section above.
+
+## Questions people ask
+
+**Do I need a Claude subscription?**
+No. Custom connectors work on the free plan, but only one is available there — if you
+already have another service connected, the slot has to be freed.
+
+**Does this work on a phone?**
+Yes. Claude reaches unitcore from its own cloud rather than from your device, so a
+connection made once in the browser works in the mobile app too.
+
+**If I connect from a work computer, will colleagues see my budget?**
+No. Access is bound to your unitcore account, not to a device or an organization.
+
+**What does Claude see of my data?**
+Only what it requests while answering: spaces, categories, transactions and totals. And
+strictly within the boundaries you see yourself in the application.

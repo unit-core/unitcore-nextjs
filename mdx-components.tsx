@@ -35,6 +35,20 @@ const components: MDXComponents = {
   pre: ({ className, ...props }) => (
     <pre className={cn('overflow-x-auto text-sm', className)} {...props} />
   ),
+
+  // A table of tool names or shortcuts is wider than a phone. Scrolling it
+  // inside its own box keeps the article body from scrolling sideways.
+  table: ({ className, ...props }) => (
+    <div className="overflow-x-auto">
+      <table className={className} {...props} />
+    </div>
+  ),
+
+  // Inline code is often a URL, and prose leaves it unbreakable. Harmless for
+  // fenced blocks: `white-space: pre` there forbids wrapping regardless.
+  code: ({ className, ...props }) => (
+    <code className={cn('break-words', className)} {...props} />
+  ),
 }
 
 // Next 16 takes no arguments here; 13/14/15 passed the inherited components.
