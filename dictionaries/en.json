@@ -1,0 +1,72 @@
+{
+  "nav": {
+    "home": "Home",
+    "blog": "Articles",
+    "language": "Language"
+  },
+  "blog": {
+    "title": "Articles",
+    "subtitle": "Guides and notes about running your budget through an AI client.",
+    "readMore": "Read",
+    "backToIndex": "All articles",
+    "publishedOn": "Published",
+    "updatedOn": "Updated",
+    "empty": "Nothing here yet.",
+    "notFoundTitle": "Article not found",
+    "notFoundBody": "This article either does not exist or is not available in this language yet."
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "description": "Enter your email below to login to your account",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot your password?",
+      "submit": "Login",
+      "submitting": "Logging in...",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up"
+    },
+    "signUp": {
+      "title": "Sign up",
+      "description": "Create a new account",
+      "email": "Email",
+      "password": "Password",
+      "repeatPassword": "Repeat Password",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "submit": "Sign up",
+      "submitting": "Creating an account...",
+      "haveAccount": "Already have an account?",
+      "login": "Login"
+    },
+    "signUpSuccess": {
+      "title": "Thank you for signing up!",
+      "description": "Check your email to confirm",
+      "body": "You've successfully signed up. Please check your email to confirm your account before signing in."
+    },
+    "forgotPassword": {
+      "title": "Reset Your Password",
+      "description": "Type in your email and we'll send you a link to reset your password",
+      "email": "Email",
+      "submit": "Send reset email",
+      "submitting": "Sending...",
+      "haveAccount": "Already have an account?",
+      "login": "Login",
+      "successTitle": "Check Your Email",
+      "successDescription": "Password reset instructions sent",
+      "successBody": "If you registered using your email and password, you will receive a password reset email."
+    },
+    "updatePassword": {
+      "title": "Reset Your Password",
+      "description": "Please enter your new password below",
+      "newPassword": "New password",
+      "submit": "Save new password",
+      "submitting": "Saving..."
+    },
+    "error": {
+      "title": "Sorry, something went wrong.",
+      "unspecified": "An unspecified error occurred."
+    },
+    "logout": "Logout"
+  }
+}

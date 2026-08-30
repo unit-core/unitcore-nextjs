@@ -4,6 +4,9 @@ import { useState } from 'react'
 
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { useLocale } from '@/lib/i18n/use-locale'
+import { localeHref } from '@/lib/i18n/urls'
+import type { Dictionary } from '@/lib/i18n/dictionaries'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -16,11 +19,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 
-export function ForgotPasswordForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
+interface ForgotPasswordFormProps extends React.ComponentPropsWithoutRef<'div'> {
+  dict: Dictionary['auth']['forgotPassword']
+}
+
+export function ForgotPasswordForm({ dict, className, ...props }: ForgotPasswordFormProps) {
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const locale = useLocale()
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,7 +39,7 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
     try {
       // The url which will be included in the email. This URL needs to be configured in your redirect URLs in the Supabase dashboard at https://supabase.com/dashboard/project/_/auth/url-configuration
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
+        redirectTo: `${window.location.origin}${localeHref(locale, '/auth/update-password')}`,
       })
       if (error) throw error
       setSuccess(true)
@@ -47,29 +55,24 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
       {success ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Check Your Email</CardTitle>
-            <CardDescription>Password reset instructions sent</CardDescription>
+            <CardTitle className="text-2xl">{dict.successTitle}</CardTitle>
+            <CardDescription>{dict.successDescription}</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              If you registered using your email and password, you will receive a password reset
-              email.
-            </p>
+            <p className="text-sm text-muted-foreground">{dict.successBody}</p>
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Reset Your Password</CardTitle>
-            <CardDescription>
-              Type in your email and we&apos;ll send you a link to reset your password
-            </CardDescription>
+            <CardTitle className="text-2xl">{dict.title}</CardTitle>
+            <CardDescription>{dict.description}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleForgotPassword}>
               <div className="flex flex-col gap-6">
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{dict.email}</Label>
                   <Input
                     id="email"
                     type="email"
@@ -81,13 +84,16 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
                 </div>
                 {error && <p className="text-sm text-red-500">{error}</p>}
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Sending...' : 'Send reset email'}
+                  {isLoading ? dict.submitting : dict.submit}
                 </Button>
               </div>
               <div className="mt-4 text-center text-sm">
-                Already have an account?{' '}
-                <Link href="/auth/login" className="underline underline-offset-4">
-                  Login
+                {dict.haveAccount}{' '}
+                <Link
+                  href={localeHref(locale, '/auth/login')}
+                  className="underline underline-offset-4"
+                >
+                  {dict.login}
                 </Link>
               </div>
             </form>

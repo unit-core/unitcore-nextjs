@@ -1,6 +1,68 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+import {
+  LOCALE_COOKIE,
+  localeFromPath,
+  pickLocale,
+  looksLikeLocale,
+  stripLocale,
+  type Locale,
+} from '@/lib/i18n/config'
+
+/**
+ * Paths that must answer without a session.
+ *
+ * Matched against the path with its locale prefix removed, so /en/blog and
+ * /ru/blog both land here and a third language needs no change. Listing the
+ * prefixed forms instead is how a public page quietly ends up behind the login
+ * wall the day a locale is added.
+ */
+const PUBLIC_PREFIXES = [
+  '/login',
+  '/auth',
+  // the OAuth consent route sends unauthenticated visitors to the login page
+  // itself, so that it can preserve the authorization in the `next` parameter
+  '/oauth/consent',
+  // the MCP endpoint and the OAuth discovery documents authenticate with
+  // bearer tokens rather than cookies, so they must answer 401/JSON instead
+  // of redirecting: an MCP client cannot follow a redirect to a login form
+  '/api/mcp',
+  '/.well-known',
+  // marketing content: the landing page and the articles
+  '/blog',
+]
+
+const PUBLIC_EXACT = new Set([
+  '/',
+  // a crawler that gets redirected to a login form indexes nothing
+  '/robots.txt',
+  '/sitemap.xml',
+])
+
+function isPublicPath(pathname: string) {
+  // An unsupported language tag has to reach the router so it can answer 404.
+  // Sending it to the login form instead would return 200 on a URL that does
+  // not exist, which is exactly the soft 404 crawlers punish.
+  if (!localeFromPath(pathname) && looksLikeLocale(pathname)) return true
+
+  const path = stripLocale(pathname)
+  if (PUBLIC_EXACT.has(path)) return true
+  // Compared segment-wise: a prefix test alone would make /authorize-me public.
+  return PUBLIC_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+}
+
+/** Keeps the login form in the language the visitor was already reading. */
+function localeFor(request: NextRequest): Locale {
+  return (
+    localeFromPath(request.nextUrl.pathname) ??
+    pickLocale(
+      request.cookies.get(LOCALE_COOKIE)?.value,
+      request.headers.get('accept-language')
+    )
+  )
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -38,22 +100,10 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims()
   const user = data?.claims
 
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth') &&
-    // the OAuth consent route sends unauthenticated visitors to the login page
-    // itself, so that it can preserve the authorization in the `next` parameter
-    request.nextUrl.pathname !== '/oauth/consent' &&
-    // the MCP endpoint and the OAuth discovery documents authenticate with
-    // bearer tokens rather than cookies, so they must answer 401/JSON instead
-    // of redirecting: an MCP client cannot follow a redirect to a login form
-    !request.nextUrl.pathname.startsWith('/api/mcp') &&
-    !request.nextUrl.pathname.startsWith('/.well-known')
-  ) {
+  if (!user && !isPublicPath(request.nextUrl.pathname)) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
-    url.pathname = '/auth/login'
+    url.pathname = `/${localeFor(request)}/auth/login`
     return NextResponse.redirect(url)
   }
 

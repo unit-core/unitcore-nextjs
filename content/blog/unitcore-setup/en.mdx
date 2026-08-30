@@ -1,0 +1,109 @@
+import { Callout } from '@/components/blog/callout'
+
+unitcore has no forms to fill in. Its primary interface is an [MCP](https://modelcontextprotocol.io)
+server, so you keep your budget by talking to the AI client you already use: *"add 1200 for
+groceries yesterday"*, *"how much did I spend on food in July?"*.
+
+This guide connects a client to your budget and explains what that client can, and cannot, do
+once it is connected.
+
+## What you get
+
+Eight tools, split by what they touch:
+
+| Read | Write |
+| --- | --- |
+| `list_spaces` | `create_space` |
+| `list_categories` | `rename_space` |
+| `list_transactions` | `create_category` |
+| `summary` | `create_transaction` |
+
+`summary` is the one that answers most questions: it returns per-category expense and income
+totals for a period.
+
+## Before you start
+
+- A unitcore account.
+- An MCP client that supports remote servers over HTTP with OAuth.
+
+There is no API key to copy and no config file to edit by hand.
+
+## Add the server
+
+One value goes into your client:
+
+```
+https://unitcore.io/api/mcp
+```
+
+## What happens when you connect
+
+This part looks like magic, and it helps to know that it is not:
+
+1. The client fetches `/.well-known/oauth-protected-resource`. That document, defined by
+   [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728), tells it which authorization
+   server issues tokens for this resource.
+2. The client registers itself dynamically, minting a fresh client id for this connection.
+3. You sign in to unitcore.
+4. You land on the consent screen.
+
+## The consent screen
+
+Three things on it are worth an actual look before you approve: the **client name**, the
+**redirect URI** it will send you back to, and whether the **account email** shown is yours.
+Approving is what mints the token; denying ends the flow and nothing is granted.
+
+## Your first conversation
+
+| You say | The client calls |
+| --- | --- |
+| "Which spaces do I have?" | `list_spaces` |
+| "Add 1200 for groceries yesterday" | `create_transaction` |
+| "How much did I spend on food in July?" | `summary` |
+| "Create a category for transport" | `create_category` |
+
+Three things about the model are worth knowing, because they explain the answers you get:
+
+- **Spaces** are budget scopes. A personal one is created for you at sign-up and is used whenever
+  you do not name another. A space can be shared with other people.
+- **Categories** are per-space and are either `expense` or `income`.
+- **Transactions** are made of items whose amounts are always positive. The category kind decides
+  the sign, in the database — not in the client, and not in your phrasing.
+
+## Why this is safe to connect
+
+Connecting an AI client to your finances deserves more than a reassuring sentence. The rule is
+that **a tool acts as the user who called it, and never as anyone else**, and three things keep
+that rule from eroding:
+
+- **Isolation is Postgres, not tool code.** Requests carry your OAuth access token, and Row Level
+  Security decides what comes back. Nothing in the tool bodies enforces isolation, so nothing in
+  them can accidentally undo it.
+- **Only OAuth tokens are accepted.** Verification requires a `client_id` claim, so a web session
+  token lifted from a browser is not a key to this server.
+- **A service-role key cannot reach the tools.** That key bypasses RLS, and the build fails if
+  the MCP code so much as reads a `SECRET` or `SERVICE_ROLE` environment variable.
+
+There is also an end-to-end test that drives every read tool as one user and fails if any
+identifier belonging to another user appears in what a tool returns.
+
+<Callout type="note">
+  The full write-up lives in the project README, under "MCP server and data isolation".
+</Callout>
+
+## What a connected client cannot do
+
+- **It cannot delete.** Removing a space, a profile or a membership is impossible from an OAuth
+  token; that path exists only in the web session, where a human sees a confirmation dialog.
+- **It may not be able to write at all.** Writing is limited to clients listed in an allow-list,
+  matched by name and redirect URI. An unlisted client can read and nothing else — so if reads
+  work and writes silently do nothing, this is why.
+
+## When something goes wrong
+
+| What you see | What it means |
+| --- | --- |
+| `401` | The token expired, or a browser session token was used. Reconnect the client. |
+| "No access token." | The request reached the server without a bearer token. |
+| "No personal space found. Pass space_id explicitly." | No default space to fall back on — name the space in your request. |
+| Reads work, writes do nothing | The client is not on the write allow-list. |
