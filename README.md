@@ -51,6 +51,41 @@ The test needs two accounts that share no space; put them in `.env.test.local`
 (see `.env.example`). Without them it skips rather than passing quietly. Run it
 whenever a migration touches a policy — that is what usually breaks isolation.
 
+### What the tools read
+
+Reads go through views, writes go to tables. The views carry
+`security_invoker = true`, so RLS still decides every row; what they change is
+the shape of the answer:
+
+- `public.my_spaces` — `is_mine` instead of a raw `owner_id`, so no foreign
+  user id can reach an answer.
+- `public.space_people` — who is in a space, by name and avatar. `email` is not
+  in the projection and is not granted on `profiles` either; finding someone to
+  invite goes through `public.invite_lookup(email)`, which matches an exact
+  address and returns an id, so nobody can be enumerated.
+- `budget.transaction_items_signed` — the sign of an amount follows the
+  category kind, decided in the database.
+
+```bash
+npm run db:check   # needs SUPABASE_DB_URL
+```
+
+`supabase/checks/security-invariants.sql` fails if a view in an exposed schema
+lacks `security_invoker`, or if a `security definer` function returns rows —
+the two ways to hand out data RLS never approved. Run it after any migration
+that adds a view or a function.
+
+### What an MCP client may do
+
+Supabase OAuth tokens have no scopes: a connected client can do everything the
+user can. Restrictive policies narrow that down. Deleting a space, a profile or
+a membership is impossible from an OAuth token — the web session, where a human
+sees a confirmation dialog, is the only path. Writing is limited to clients
+listed in `public.oauth_clients_allowed` (matched by name and redirect URI,
+because dynamic registration mints a fresh client id on every connect); an
+unlisted client can read and nothing else. That table is invisible to the Data
+API — edit it in the dashboard.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
