@@ -38,7 +38,7 @@ const fail = (message: string) => ({
 async function resolveSpaceId(db: SupabaseClient, spaceId?: string) {
   if (spaceId) return spaceId
   const { data, error } = await db
-    .from('spaces')
+    .from('my_spaces')
     .select('id')
     .eq('is_default', true)
     .limit(1)
@@ -57,15 +57,19 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
       title: 'List spaces',
       description:
         'Spaces the user has access to. is_default = true marks the personal space, ' +
-        'which is used whenever space_id is omitted.',
+        'which is used whenever space_id is omitted; is_mine = false means the space ' +
+        'belongs to someone else and only its owner can rename or delete it.',
       inputSchema: z.object({}),
     },
     async (_args, ctx) => {
       const db = clientFor(ctx)
       if (!db) return fail('No access token.')
+      // my_spaces is a security_invoker view: same rows as spaces, but with
+      // is_mine instead of a raw owner_id, so no foreign user id ever reaches
+      // the answer.
       const { data, error } = await db
-        .from('spaces')
-        .select('id, name, is_default, owner_id, created_at')
+        .from('my_spaces')
+        .select('id, name, is_default, is_mine, created_at')
         .order('is_default', { ascending: false })
       return error ? fail(error.message) : ok(data)
     }
@@ -134,16 +138,14 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
         if (error) return fail(error.message)
         if (!txs?.length) return ok([])
 
-        const [{ data: items }, { data: cats }] = await Promise.all([
-          db
-            .schema('budget')
-            .from('transaction_items')
-            .select('id, transaction_id, category_id, name, amount')
-            .in('transaction_id', txs.map((t) => t.id)),
-          db.schema('budget').from('categories').select('id, name, kind').eq('space_id', spaceId),
-        ])
+        // The signed view joins the category in the database, so the items and
+        // their category names arrive in one query.
+        const { data: items } = await db
+          .schema('budget')
+          .from('transaction_items_signed')
+          .select('transaction_id, name, amount, category_name, category_kind')
+          .in('transaction_id', txs.map((t) => t.id))
 
-        const catById = new Map((cats ?? []).map((c) => [c.id, c]))
         return ok(
           txs.map((t) => ({
             ...t,
@@ -152,8 +154,8 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
               .map((i) => ({
                 name: i.name,
                 amount: Number(i.amount),
-                category: catById.get(i.category_id)?.name ?? null,
-                kind: catById.get(i.category_id)?.kind ?? null,
+                category: i.category_name,
+                kind: i.category_kind,
               })),
           }))
         )
@@ -182,34 +184,33 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
       try {
         const spaceId = await resolveSpaceId(db, space_id)
 
+        // signed_amount comes from the view: the sign follows the category
+        // kind, so the net figure is decided in the database rather than here.
         let q = db
           .schema('budget')
-          .from('transaction_items')
-          .select('category_id, amount, currency_code')
+          .from('transaction_items_signed')
+          .select('category_name, category_kind, currency_code, amount, signed_amount')
           .eq('space_id', spaceId)
         if (from) q = q.gte('occurred_at', from)
         if (to) q = q.lte('occurred_at', to)
 
-        const [{ data: items, error }, { data: cats }] = await Promise.all([
-          q,
-          db.schema('budget').from('categories').select('id, name, kind').eq('space_id', spaceId),
-        ])
+        const { data: items, error } = await q
         if (error) return fail(error.message)
 
-        const catById = new Map((cats ?? []).map((c) => [c.id, c]))
         const totals = new Map<string, { category: string; kind: string; currency: string; total: number }>()
+        let net = 0
 
         for (const item of items ?? []) {
-          const cat = catById.get(item.category_id)
-          const key = `${item.category_id}|${item.currency_code}`
+          const key = `${item.category_name ?? ''}|${item.currency_code}`
           const row = totals.get(key) ?? {
-            category: cat?.name ?? 'Uncategorized',
-            kind: cat?.kind ?? 'unknown',
+            category: item.category_name ?? 'Uncategorized',
+            kind: item.category_kind ?? 'unknown',
             currency: item.currency_code,
             total: 0,
           }
           row.total += Number(item.amount)
           totals.set(key, row)
+          net += Number(item.signed_amount ?? 0)
         }
 
         const rows = [...totals.values()].sort((a, b) => b.total - a.total)
@@ -219,6 +220,7 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
           totals: {
             expense: rows.filter((r) => r.kind === 'expense').reduce((s, r) => s + r.total, 0),
             income: rows.filter((r) => r.kind === 'income').reduce((s, r) => s + r.total, 0),
+            net,
           },
         })
       } catch (e) {
@@ -245,7 +247,7 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
       const { data, error } = await db
         .from('spaces')
         .insert({ name, owner_id: userId })
-        .select('id, name, is_default, owner_id, created_at')
+        .select('id, name, is_default, created_at')
         .single()
       return error ? fail(error.message) : ok(data)
     }
@@ -272,7 +274,7 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
           .from('spaces')
           .update({ name })
           .eq('id', spaceId)
-          .select('id, name, is_default, owner_id, updated_at')
+          .select('id, name, is_default, updated_at')
           .maybeSingle()
         if (error) return fail(error.message)
         // RLS hides spaces the user does not own, so an empty result is a

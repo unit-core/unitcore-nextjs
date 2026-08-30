@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --env-file-if-exists=.env.local --env-file-if-exists=.env.test.local --test \"tests/**/*.test.mts\""
+    "test": "node --env-file-if-exists=.env.local --env-file-if-exists=.env.test.local --test \"tests/**/*.test.mts\"",
+    "db:check": "psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -f supabase/checks/security-invariants.sql"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
