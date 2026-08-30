@@ -1,6 +1,8 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { useLocale } from '@/lib/i18n/use-locale'
+import { localeHref } from '@/lib/i18n/urls'
 import {
   useOAuthConsent,
   type OAuthConsentDecision,
@@ -130,13 +132,16 @@ interface OAuthConsentProps extends React.ComponentPropsWithoutRef<'div'> {
 
 export function OAuthConsent({
   authorizationId,
-  signInPath = '/auth/login',
+  signInPath,
   productName = 'Your product',
   ...props
 }: OAuthConsentProps) {
+  const locale = useLocale()
   const { details, email, error, isLoading, decision, approve, deny } = useOAuthConsent({
     authorizationId,
-    signInPath,
+    // Every page lives under a locale, so an unauthenticated visitor must be
+    // sent to the login form in the language they are already reading.
+    signInPath: signInPath ?? localeHref(locale, '/auth/login'),
   })
 
   if (isLoading || !details || !email) {
