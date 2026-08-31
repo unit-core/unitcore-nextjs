@@ -96,8 +96,10 @@ export function CopyField({
       <div className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3">
         <code
           ref={text}
+          // py-1 pads the 20px line box out to the button's 28px, so the first
+          // line sits on the button's centre line instead of above it.
           className={cn(
-            'min-w-0 flex-1 font-mono text-sm',
+            'min-w-0 flex-1 py-1 font-mono text-sm',
             multiline ? 'whitespace-pre-wrap' : 'break-all'
           )}
         >
