@@ -1,4 +1,4 @@
-import { type Locale } from '@/lib/i18n/config'
+import { type Locale } from './config.ts'
 
 /**
  * The apex is canonical: vercel.json redirects www to it permanently.

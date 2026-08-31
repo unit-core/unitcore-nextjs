@@ -1,4 +1,4 @@
-import { SITE_URL } from '@/lib/i18n/urls'
+import { SITE_URL } from './i18n/urls.ts'
 
 /**
  * The one value a reader ever types by hand, and the one the install links
@@ -8,11 +8,18 @@ import { SITE_URL } from '@/lib/i18n/urls'
 export const MCP_URL = `${SITE_URL}/api/mcp`
 
 /**
- * Only a label. Write access is decided by `public.oauth_clients_allowed`,
- * matched against the client name the OAuth client registers itself under —
- * Claude sends "Claude" regardless of what the user types here.
+ * Only a label. It reaches nothing that decides permissions: write access is
+ * granted per user to a `client_id`, and Claude registers itself as "Claude"
+ * regardless of what the user types here.
  */
 export const CONNECTOR_NAME = 'Unitcore'
+
+/**
+ * Where a user turns write access on or off for a connected client. Handed to
+ * MCP clients inside the read-only error, so it must be absolute — and without
+ * a locale, because `proxy.ts` prefixes the reader's own language.
+ */
+export const CONNECTIONS_URL = `${SITE_URL}/settings/connections`
 
 /**
  * Prefills Claude's "Add custom connector" dialog. Documented at

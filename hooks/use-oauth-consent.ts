@@ -7,6 +7,14 @@ import { createClient } from '@/lib/supabase/client'
 
 export type OAuthConsentDecision = 'approve' | 'deny'
 
+/**
+ * Supabase OAuth has no custom scopes: the token always carries full access to
+ * the user's data. What "read only" means is therefore decided by us, in
+ * `public.oauth_grants`, and enforced by the restrictive policies that call
+ * `private.mcp_can_write()`.
+ */
+export type OAuthAccessLevel = 'read_write' | 'read'
+
 export interface UseOAuthConsentOptions {
   authorizationId?: string | null
   signInPath?: string
@@ -28,6 +36,11 @@ const useOAuthConsent = ({
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [decision, setDecision] = useState<OAuthConsentDecision | null>(null)
+  // Write is preselected: the product exists so that a budget can be kept from
+  // an AI client, and a connection that silently cannot add an expense reads
+  // as broken. The choice stays visible, and one click changes it — here, or
+  // later on /settings/connections.
+  const [access, setAccess] = useState<OAuthAccessLevel>('read_write')
   const isDeciding = useRef(false)
 
   useEffect(() => {
@@ -38,6 +51,7 @@ const useOAuthConsent = ({
       setError(null)
       setDetails(null)
       setDecision(null)
+      setAccess('read_write')
 
       if (!authorizationId) {
         setError('This page needs an authorization_id. Start again from your OAuth client.')
@@ -103,6 +117,32 @@ const useOAuthConsent = ({
       setDecision(action)
       setError(null)
       const supabase = createClient()
+
+      // The grant is written before the token exists, so the client's very
+      // first tool call already sees the right permissions. The other order
+      // leaves a window in which the client holds a token and has no row.
+      // A row without a token grants nothing — no token, no client_id to match
+      // — and the connections page sweeps it away.
+      if (action === 'approve' && details) {
+        const { error: grantError } = await supabase.from('oauth_grants').upsert(
+          {
+            user_id: details.user.id,
+            client_id: details.client.id,
+            client_name: details.client.name,
+            redirect_uri: details.redirect_uri,
+            can_write: access === 'read_write',
+          },
+          { onConflict: 'user_id,client_id' }
+        )
+
+        if (grantError) {
+          setError(grantError.message)
+          setDecision(null)
+          isDeciding.current = false
+          return
+        }
+      }
+
       const result =
         action === 'approve'
           ? await supabase.auth.oauth.approveAuthorization(authorizationId, {
@@ -128,7 +168,7 @@ const useOAuthConsent = ({
 
       window.location.assign(result.data.redirect_url)
     },
-    [authorizationId]
+    [access, authorizationId, details]
   )
 
   return {
@@ -137,6 +177,8 @@ const useOAuthConsent = ({
     error,
     isLoading,
     decision,
+    access,
+    setAccess,
     approve: () => decide('approve'),
     deny: () => decide('deny'),
   }

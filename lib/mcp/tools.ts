@@ -1,6 +1,11 @@
 import type { AuthInfo, McpServer } from '@modelcontextprotocol/server'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+
+// Relative, with the extension: tests/mcp-isolation.test.mts loads this module
+// through Node's type stripping, which has no tsconfig path aliases. Anything
+// this file reaches has to import the same way.
+import { CONNECTIONS_URL, CONNECTOR_NAME } from '../connectors.ts'
 
 export interface ToolContext {
   http?: { authInfo?: AuthInfo }
@@ -33,6 +38,22 @@ const fail = (message: string) => ({
   isError: true,
   content: [{ type: 'text' as const, text: message }],
 })
+
+/**
+ * What a client without write access actually hits, and what PostgREST says
+ * about it: `new row violates row-level security policy for table
+ * "transactions"`. A model reading that has no way to tell a missing
+ * permission from a transient fault, so it guesses and retries. Every tool in
+ * WRITE_TOOLS reports the refusal through here instead, naming the cause and
+ * the page that fixes it. Anything else is passed through untouched.
+ */
+const failWrite = (error: PostgrestError) =>
+  error.code === '42501' || error.message.includes('row-level security')
+    ? fail(
+        `This client has read-only access to your ${CONNECTOR_NAME} data. ` +
+          `Turn on write access for it at ${CONNECTIONS_URL} and try again.`
+      )
+    : fail(error.message)
 
 /** Falls back to the user's personal space, which a trigger guarantees exists. */
 async function resolveSpaceId(db: SupabaseClient, spaceId?: string) {
@@ -249,7 +270,7 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
         .insert({ name, owner_id: userId })
         .select('id, name, is_default, created_at')
         .single()
-      return error ? fail(error.message) : ok(data)
+      return error ? failWrite(error) : ok(data)
     }
   )
 
@@ -276,10 +297,20 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
           .eq('id', spaceId)
           .select('id, name, is_default, updated_at')
           .maybeSingle()
-        if (error) return fail(error.message)
-        // RLS hides spaces the user does not own, so an empty result is a
-        // permission miss, not a database error.
-        return data ? ok(data) : fail('Space not found, or you are not its owner.')
+        if (error) return failWrite(error)
+        // The only UPDATE among the write tools, and the one refusal that
+        // arrives silently: a restrictive policy filters the row out through
+        // its USING clause, so PostgREST reports zero rows rather than 42501
+        // and failWrite never sees it. Nothing readable from under an OAuth
+        // token separates "not yours" from "read-only" — oauth_grants is
+        // hidden from exactly this caller by design — so the message names
+        // both instead of picking one and being confidently wrong.
+        return data
+          ? ok(data)
+          : fail(
+              'Space not found, you are not its owner, or this client has read-only access. ' +
+                `Check its permissions at ${CONNECTIONS_URL}.`
+            )
       } catch (e) {
         return fail(e instanceof Error ? e.message : String(e))
       }
@@ -308,7 +339,7 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
           .insert({ name, kind, space_id: spaceId })
           .select('id, name, kind')
           .single()
-        return error ? fail(error.message) : ok(data)
+        return error ? failWrite(error) : ok(data)
       } catch (e) {
         return fail(e instanceof Error ? e.message : String(e))
       }
@@ -355,7 +386,7 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
           })
           .select('id, title, occurred_at, currency_code')
           .single()
-        if (txError) return fail(txError.message)
+        if (txError) return failWrite(txError)
 
         // space_id, occurred_at and currency_code are set by the
         // item_inherit_from_transaction trigger — passing them is pointless.

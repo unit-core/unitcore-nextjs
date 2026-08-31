@@ -1,13 +1,18 @@
 'use client'
 
+import { useId } from 'react'
+
 import { cn } from '@/lib/utils'
 import { useLocale } from '@/lib/i18n/use-locale'
 import { localeHref } from '@/lib/i18n/urls'
+import type { Dictionary } from '@/lib/i18n/dictionaries'
 import {
   useOAuthConsent,
+  type OAuthAccessLevel,
   type OAuthConsentDecision,
 } from '@/hooks/use-oauth-consent'
 import { Button } from '@/components/ui/button'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Card,
   CardContent,
@@ -15,6 +20,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+
+export type ConsentAccessDictionary = Dictionary['consent']['access']
 
 const getInitial = (value: string) => value.trim().charAt(0).toUpperCase() || '?'
 
@@ -57,12 +64,61 @@ function ConsentCardShell({
   )
 }
 
+interface AccessChoiceProps {
+  dict: ConsentAccessDictionary
+  value: OAuthAccessLevel
+  onChange: (value: OAuthAccessLevel) => void
+  disabled?: boolean
+}
+
+/**
+ * Supabase OAuth has no custom scopes, so this is not something the client
+ * asked for and the user confirms — it is the user's own decision, and the
+ * only place the product lets them make it before the token exists.
+ */
+function AccessChoice({ dict, value, onChange, disabled }: AccessChoiceProps) {
+  const id = useId()
+  const options = [
+    { value: 'read_write' as const, label: dict.readWrite, hint: dict.readWriteHint },
+    { value: 'read' as const, label: dict.readOnly, hint: dict.readOnlyHint },
+  ]
+
+  return (
+    <fieldset className="space-y-3" disabled={disabled}>
+      <legend className="text-sm font-medium">{dict.title}</legend>
+      <RadioGroup
+        value={value}
+        onValueChange={(next) => onChange(next as OAuthAccessLevel)}
+        disabled={disabled}
+        className="gap-0 divide-y rounded-lg border"
+      >
+        {options.map((option) => (
+          <label
+            key={option.value}
+            htmlFor={`${id}-${option.value}`}
+            className="flex cursor-pointer items-start gap-3 p-4 text-sm has-data-disabled:cursor-not-allowed"
+          >
+            <RadioGroupItem id={`${id}-${option.value}`} value={option.value} className="mt-0.5" />
+            <span className="space-y-1">
+              <span className="block font-medium">{option.label}</span>
+              <span className="block text-muted-foreground">{option.hint}</span>
+            </span>
+          </label>
+        ))}
+      </RadioGroup>
+    </fieldset>
+  )
+}
+
 export interface OAuthConsentCardProps extends React.ComponentPropsWithoutRef<'div'> {
   clientName: string
   productName?: string
   redirectUri: string
   email: string
   scopes?: string[]
+  accessDict: ConsentAccessDictionary
+  access: OAuthAccessLevel
+  onAccessChange: (value: OAuthAccessLevel) => void
   error?: string | null
   decision?: OAuthConsentDecision | null
   onApprove?: () => void
@@ -75,6 +131,9 @@ export function OAuthConsentCard({
   redirectUri,
   email,
   scopes = [],
+  accessDict,
+  access,
+  onAccessChange,
   error = null,
   decision = null,
   onApprove,
@@ -103,6 +162,12 @@ export function OAuthConsentCard({
           </div>
         )}
       </dl>
+      <AccessChoice
+        dict={accessDict}
+        value={access}
+        onChange={onAccessChange}
+        disabled={decision !== null}
+      />
       <p className="text-sm text-muted-foreground">
         Allow access only if you recognize this application. It can act on your behalf only within
         the requested permissions and the access you already have.
@@ -128,21 +193,24 @@ interface OAuthConsentProps extends React.ComponentPropsWithoutRef<'div'> {
   authorizationId?: string | null
   signInPath?: string
   productName?: string
+  accessDict: ConsentAccessDictionary
 }
 
 export function OAuthConsent({
   authorizationId,
   signInPath,
   productName = 'Your product',
+  accessDict,
   ...props
 }: OAuthConsentProps) {
   const locale = useLocale()
-  const { details, email, error, isLoading, decision, approve, deny } = useOAuthConsent({
-    authorizationId,
-    // Every page lives under a locale, so an unauthenticated visitor must be
-    // sent to the login form in the language they are already reading.
-    signInPath: signInPath ?? localeHref(locale, '/auth/login'),
-  })
+  const { details, email, error, isLoading, decision, access, setAccess, approve, deny } =
+    useOAuthConsent({
+      authorizationId,
+      // Every page lives under a locale, so an unauthenticated visitor must be
+      // sent to the login form in the language they are already reading.
+      signInPath: signInPath ?? localeHref(locale, '/auth/login'),
+    })
 
   if (isLoading || !details || !email) {
     return (
@@ -168,6 +236,9 @@ export function OAuthConsent({
       redirectUri={details.redirect_uri}
       email={email}
       scopes={details.scope.split(' ').filter(Boolean)}
+      accessDict={accessDict}
+      access={access}
+      onAccessChange={setAccess}
       error={error}
       decision={decision}
       onApprove={() => void approve()}
