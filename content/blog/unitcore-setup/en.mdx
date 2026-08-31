@@ -3,7 +3,7 @@ import { CopyField } from '@/components/blog/copy-field'
 import { InstallButton } from '@/components/blog/install-button'
 import { claudeInstallUrl, CONNECTOR_NAME, MCP_URL } from '@/lib/connectors'
 
-A budget in unitcore is kept by talking: "log 1200 on groceries yesterday", "how much did
+A budget in Unitcore is kept by talking: "log 1200 on groceries yesterday", "how much did
 I spend on food in July". There are no forms to fill in, because the application's primary
 interface is an [MCP](https://modelcontextprotocol.io) server that Claude connects to as
 one of its own tools.
@@ -15,9 +15,9 @@ the browser works in the desktop app and on your phone too.
 
 <InstallButton
   href={claudeInstallUrl()}
-  note="Opens claude.ai with the name and server address already filled in. The link only prefills the form — adding the connector and signing in to unitcore is still yours to do."
+  note="Opens claude.ai with the name and server address already filled in. The link only prefills the form — adding the connector and signing in to Unitcore is still yours to do."
 >
-  Add unitcore to Claude
+  Add Unitcore to Claude
 </InstallButton>
 
 If you are adding the connector by hand, this is the only value you will have to type:
@@ -25,18 +25,18 @@ If you are adding the connector by hand, this is the only value you will have to
 <CopyField label="Remote MCP server URL" value={MCP_URL} />
 
 No keys, no tokens, no passwords go anywhere — access is granted through your ordinary
-unitcore account.
+Unitcore account.
 
 <Callout type="warning">
   **One setting you have to choose yourself.** In the add dialog, under **OAuth client**,
-  pick **"No client ID — register one automatically"**. unitcore's authorization server
+  pick **"No client ID — register one automatically"**. Unitcore's authorization server
   does not advertise pre-arranged client metadata, and the connection will break on the
   way back from the browser. Step 3 explains why.
 </Callout>
 
 ## Before you start
 
-- **Sign in to unitcore in this same browser.** Then the authorization step takes you
+- **Sign in to Unitcore in this same browser.** Then the authorization step takes you
   straight to the consent screen instead of a login form.
 - **Any Claude plan will do, including the free one.** The free plan allows a single
   custom connector, so the slot is worth spending deliberately.
@@ -84,7 +84,7 @@ Leave the rest alone:
 
 | Field | Value |
 | --- | --- |
-| **Authentication** | sign-in through your unitcore account, detected automatically |
+| **Authentication** | sign-in through your Unitcore account, detected automatically |
 | **Request headers** | leave empty — there are no API keys here |
 | **Advanced → Transport** | filled in from the address |
 
@@ -98,14 +98,14 @@ Press **Add**.
 ## Step 4. Sign in and approve
 
 A card appears in the connector list. Press **Connect** and a browser window opens — with
-a login form first, if you are not signed in to unitcore yet.
+a login form first, if you are not signed in to Unitcore yet.
 
-Then comes the unitcore consent screen. Three rows on it are worth actually reading:
+Then comes the Unitcore consent screen. Three rows on it are worth actually reading:
 
 - **Client** — the name of the client asking for access;
 - **Redirects to** — where you will be returned; for Claude that is
   `https://claude.ai/api/mcp/auth_callback`;
-- **Signed in as** — whether this is your unitcore account.
+- **Signed in as** — whether this is your Unitcore account.
 
 **Allow access** issues the token; **Deny** ends the flow and no access is granted. After
 you approve, the window closes itself and the connector card goes live.
@@ -113,11 +113,11 @@ you approve, the window closes itself and the connector card goes live.
 ## Step 5. Turn the connector on in a conversation
 
 The connector is attached to your account, but each chat enables it separately: in the
-composer, press **+** → **Connectors** and switch unitcore on.
+composer, press **+** → **Connectors** and switch Unitcore on.
 
 ## Step 6. Check that it works
 
-<CopyField multiline value="Show me my unitcore spaces" />
+<CopyField multiline value="Show me my Unitcore spaces" />
 
 Claude will ask you to approve the tool call — press **Allow**, or **Allow always** to
 stop being asked. The answer should contain your personal space, created automatically
@@ -127,7 +127,7 @@ when you signed up. If you see it, you are connected.
 
 Ready-made phrases you can copy as they are.
 
-<CopyField multiline value="Log this in unitcore: groceries, 1200, yesterday" />
+<CopyField multiline value="Log this in Unitcore: groceries, 1200, yesterday" />
 
 <CopyField
   multiline
@@ -211,7 +211,7 @@ identifier belonging to another shows up in the answer.
 - **Selectively:** in the connector card, any tool can be set to **Blocked**. Block
   `create_transaction` and `create_category` and Claude can read and reckon but write
   nothing.
-- **Entirely:** **Customize** → **Connectors** → unitcore → **Remove**. The client loses
+- **Entirely:** **Customize** → **Connectors** → Unitcore → **Remove**. The client loses
   the ability to renew access; the issued token is short-lived and Claude refreshes it
   itself only while the connection exists.
 
@@ -221,11 +221,11 @@ identifier belonging to another shows up in the answer.
 | --- | --- |
 | You approved and came back to an authorization error | Almost always the setting from step 3. It cannot be changed on an existing connector: **Remove** it and add it again, choosing **"No client ID — register one automatically"** |
 | **Connect** opens nothing | The browser blocked the popup. Allow popups for claude.ai and retry |
-| Claude says it has no access to unitcore | The connector is not on in this chat: **+** → **Connectors** → unitcore |
+| Claude says it has no access to Unitcore | The connector is not on in this chat: **+** → **Connectors** → Unitcore |
 | `401` | The token expired, or a browser session token was used. Reconnect the client |
 | `No access token.` | The request reached the server without a bearer token |
 | `No personal space found. Pass space_id explicitly.` | There is no default space — name the space in your request |
-| The list of spaces is empty | You signed in to a different unitcore account. Remove the connector, sign out of the extra account and connect again |
+| The list of spaces is empty | You signed in to a different Unitcore account. Remove the connector, sign out of the extra account and connect again |
 | Reads work, writes do not | The client is not on the write allow-list |
 | No **Add custom connector** item | You are on Team or Enterprise: the organization owner adds the connector first |
 
@@ -243,11 +243,11 @@ No. Custom connectors work on the free plan, but only one is available there —
 already have another service connected, the slot has to be freed.
 
 **Does this work on a phone?**
-Yes. Claude reaches unitcore from its own cloud rather than from your device, so a
+Yes. Claude reaches Unitcore from its own cloud rather than from your device, so a
 connection made once in the browser works in the mobile app too.
 
 **If I connect from a work computer, will colleagues see my budget?**
-No. Access is bound to your unitcore account, not to a device or an organization.
+No. Access is bound to your Unitcore account, not to a device or an organization.
 
 **What does Claude see of my data?**
 Only what it requests while answering: spaces, categories, transactions and totals. And

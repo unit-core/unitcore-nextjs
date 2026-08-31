@@ -39,13 +39,13 @@ const articles: readonly Article[] = [
     tags: ['mcp', 'setup', 'oauth', 'claude'],
     translations: {
       en: {
-        title: 'Connect unitcore to Claude',
+        title: 'Connect Unitcore to Claude',
         description:
           'A step-by-step setup, the one OAuth setting that trips people up, and what Claude can and cannot do with your budget once it is connected.',
         load: () => import('./unitcore-setup/en.mdx'),
       },
       ru: {
-        title: 'Подключите unitcore к Claude',
+        title: 'Подключите Unitcore к Claude',
         description:
           'Пошаговая настройка, единственная настройка OAuth, на которой все спотыкаются, и что Claude может и не может делать с вашим бюджетом после подключения.',
         load: () => import('./unitcore-setup/ru.mdx'),

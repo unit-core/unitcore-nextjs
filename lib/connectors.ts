@@ -12,7 +12,7 @@ export const MCP_URL = `${SITE_URL}/api/mcp`
  * matched against the client name the OAuth client registers itself under —
  * Claude sends "Claude" regardless of what the user types here.
  */
-export const CONNECTOR_NAME = 'unitcore'
+export const CONNECTOR_NAME = 'Unitcore'
 
 /**
  * Prefills Claude's "Add custom connector" dialog. Documented at

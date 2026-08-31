@@ -23,8 +23,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'unitcore',
-    template: '%s — unitcore',
+    default: 'Unitcore',
+    template: '%s — Unitcore',
   },
   description: 'A shared budget you manage by talking to your AI client.',
 }

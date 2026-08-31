@@ -51,7 +51,7 @@ export async function generateMetadata(
       locale: article.locale === 'ru' ? 'ru_RU' : 'en_US',
       publishedTime: article.date,
       modifiedTime: article.updated ?? article.date,
-      siteName: 'unitcore',
+      siteName: 'Unitcore',
     },
   }
 }

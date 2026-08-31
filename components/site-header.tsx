@@ -17,7 +17,7 @@ export function SiteHeader({ locale, dict }: SiteHeaderProps) {
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-4">
         <nav className="flex items-center gap-6 text-sm">
           <Link href={localeHref(locale, '/')} className="font-medium">
-            unitcore
+            Unitcore
           </Link>
           <Link
             href={localeHref(locale, '/blog')}
