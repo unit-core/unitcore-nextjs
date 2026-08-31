@@ -80,7 +80,9 @@ that adds a view or a function.
 Supabase OAuth tokens have no scopes: a connected client can do everything the
 user can. Restrictive policies narrow that down. Deleting a space, a profile or
 a membership is impossible from an OAuth token — the web session, where a human
-sees a confirmation dialog, is the only path. Writing is limited to clients
+sees a confirmation dialog, is the only path. That path is `/settings/spaces`:
+renaming and deleting a space, adding and removing the people in it, and leaving
+a space someone else owns all live there. Writing is limited to clients
 listed in `public.oauth_clients_allowed` (matched by name and redirect URI,
 because dynamic registration mints a fresh client id on every connect); an
 unlisted client can read and nothing else. That table is invisible to the Data

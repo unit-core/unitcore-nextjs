@@ -96,6 +96,76 @@
       "revokeHint": "The refresh token dies at once; an access token already issued keeps working for up to an hour.",
       "loading": "Loading your connections...",
       "error": "Could not load your connections:"
+    },
+    "tabs": {
+      "connections": "Applications",
+      "spaces": "Spaces"
+    },
+    "spaces": {
+      "title": "Spaces",
+      "subtitle": "Your personal space, and every space you share with someone.",
+      "loading": "Loading your spaces...",
+      "error": "Could not load your spaces:",
+      "personal": "Personal",
+      "owner": "Owner",
+      "guest": "Shared with you",
+      "members": "Members",
+      "open": "Open",
+      "create": {
+        "label": "New space",
+        "placeholder": "Household, trip to Lisbon, ...",
+        "submit": "Create",
+        "submitting": "Creating..."
+      },
+      "detail": {
+        "back": "All spaces",
+        "notFound": "This space does not exist, or you are no longer a member of it.",
+        "cancel": "Cancel",
+        "rename": {
+          "label": "Name",
+          "submit": "Rename",
+          "submitting": "Saving..."
+        },
+        "members": {
+          "title": "Members",
+          "unnamed": "Unnamed",
+          "you": "You",
+          "owner": "Owner",
+          "remove": "Remove",
+          "removing": "Removing..."
+        },
+        "invite": {
+          "label": "Add someone",
+          "hint": "By the exact address of an account that already exists — there are no invitation emails yet.",
+          "placeholder": "name@example.com",
+          "submit": "Add",
+          "submitting": "Adding...",
+          "notFound": "No account with this address.",
+          "already": "This person is already a member."
+        },
+        "leave": {
+          "title": "Leave this space",
+          "hint": "You lose access to everything in it. Nothing is deleted, and the owner can add you back.",
+          "submit": "Leave",
+          "submitting": "Leaving...",
+          "dialogTitle": "Leave this space?",
+          "dialogBody": "Its transactions and categories disappear from your budget. Nothing is deleted, and the owner can add you back."
+        },
+        "remove": {
+          "title": "Delete this space",
+          "hint": "Everything in it goes too: transactions, their items, categories and the list of members. This cannot be undone.",
+          "submit": "Delete space",
+          "dialogTitle": "Delete this space?",
+          "dialogBody": "Transactions, items, categories and members are deleted with it. This cannot be undone.",
+          "confirmLabel": "Type the name of the space to confirm:",
+          "confirm": "Delete",
+          "deleting": "Deleting..."
+        },
+        "errors": {
+          "notAllowed": "Not allowed: only the owner can change a space, and the personal space can never be deleted.",
+          "silent": "Nothing changed: this space is not yours any more, or it is already gone."
+        }
+      }
     }
   }
 }
