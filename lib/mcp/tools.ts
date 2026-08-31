@@ -28,7 +28,18 @@ export interface ToolDeps {
 export const READ_TOOLS = ['list_spaces', 'list_categories', 'list_transactions', 'summary'] as const
 
 /** Tools that write. Excluded from the isolation test so it leaves no rows behind. */
-export const WRITE_TOOLS = ['create_space', 'rename_space', 'create_category', 'create_transaction'] as const
+export const WRITE_TOOLS = [
+  'create_space',
+  'rename_space',
+  'create_categories',
+  'update_category',
+  'delete_categories',
+  'create_transaction',
+  'update_transaction',
+  'delete_transaction',
+  'update_transaction_item',
+  'delete_transaction_item',
+] as const
 
 const ok = (data: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],
@@ -54,6 +65,22 @@ const failWrite = (error: PostgrestError) =>
           `Turn on write access for it at ${CONNECTIONS_URL} and try again.`
       )
     : fail(error.message)
+
+/**
+ * The refusal that arrives silently. An UPDATE or a DELETE only sees the rows
+ * its policy's USING clause lets through, so a row that belongs to someone
+ * else — or that a read-only client may not touch — is filtered out before the
+ * statement runs: PostgREST reports zero rows rather than 42501, and failWrite
+ * never sees it. Nothing readable from under an OAuth token separates "not
+ * yours" from "read-only" — oauth_grants is hidden from exactly this caller by
+ * design — so the message names both instead of picking one and being
+ * confidently wrong.
+ */
+const failNoRow = (lead: string) =>
+  fail(
+    `${lead}, or this client has read-only access to your ${CONNECTOR_NAME} data. ` +
+      `Check its permissions at ${CONNECTIONS_URL}.`
+  )
 
 /** Falls back to the user's personal space, which a trigger guarantees exists. */
 async function resolveSpaceId(db: SupabaseClient, spaceId?: string) {
@@ -298,19 +325,7 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
           .select('id, name, is_default, updated_at')
           .maybeSingle()
         if (error) return failWrite(error)
-        // The only UPDATE among the write tools, and the one refusal that
-        // arrives silently: a restrictive policy filters the row out through
-        // its USING clause, so PostgREST reports zero rows rather than 42501
-        // and failWrite never sees it. Nothing readable from under an OAuth
-        // token separates "not yours" from "read-only" — oauth_grants is
-        // hidden from exactly this caller by design — so the message names
-        // both instead of picking one and being confidently wrong.
-        return data
-          ? ok(data)
-          : fail(
-              'Space not found, you are not its owner, or this client has read-only access. ' +
-                `Check its permissions at ${CONNECTIONS_URL}.`
-            )
+        return data ? ok(data) : failNoRow('Space not found or you are not its owner')
       } catch (e) {
         return fail(e instanceof Error ? e.message : String(e))
       }
@@ -318,17 +333,27 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
   )
 
   server.registerTool(
-    'create_category',
+    'create_categories',
     {
-      title: 'Create category',
-      description: 'A new expense or income category in a space.',
+      title: 'Create categories',
+      description:
+        'New expense or income categories in a space — one or many, in a single call. Either all ' +
+        'of them are created or none is. Names are not unique: a name that already exists gives a ' +
+        'second category with that name, so list_categories first when in doubt.',
       inputSchema: z.object({
-        name: z.string().min(1),
-        kind: z.enum(['expense', 'income']),
+        categories: z
+          .array(
+            z.object({
+              name: z.string().min(1),
+              kind: z.enum(['expense', 'income']),
+            })
+          )
+          .min(1)
+          .max(50),
         space_id: z.string().uuid().optional(),
       }),
     },
-    async ({ name, kind, space_id }, ctx) => {
+    async ({ categories, space_id }, ctx) => {
       const db = clientFor(ctx)
       if (!db) return fail('No access token.')
       try {
@@ -336,13 +361,81 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
         const { data, error } = await db
           .schema('budget')
           .from('categories')
-          .insert({ name, kind, space_id: spaceId })
+          .insert(categories.map((c) => ({ name: c.name, kind: c.kind, space_id: spaceId })))
           .select('id, name, kind')
-          .single()
         return error ? failWrite(error) : ok(data)
       } catch (e) {
         return fail(e instanceof Error ? e.message : String(e))
       }
+    }
+  )
+
+  server.registerTool(
+    'update_category',
+    {
+      title: 'Update category',
+      description:
+        'Renames a category or changes its kind. Only the fields passed are touched. Changing the ' +
+        'kind rewrites history: every item already in this category starts counting as income ' +
+        'instead of expense, or the other way round, and summary moves with it.',
+      inputSchema: z.object({
+        category_id: z.string().uuid(),
+        name: z.string().trim().min(1).optional(),
+        kind: z.enum(['expense', 'income']).optional(),
+      }),
+    },
+    async ({ category_id, name, kind }, ctx) => {
+      const db = clientFor(ctx)
+      if (!db) return fail('No access token.')
+      const patch = {
+        ...(name !== undefined ? { name } : {}),
+        ...(kind !== undefined ? { kind } : {}),
+      }
+      if (!Object.keys(patch).length) return fail('Nothing to change: pass name, kind, or both.')
+      const { data, error } = await db
+        .schema('budget')
+        .from('categories')
+        .update(patch)
+        .eq('id', category_id)
+        .select('id, name, kind, space_id')
+        .maybeSingle()
+      if (error) return failWrite(error)
+      return data ? ok(data) : failNoRow('Category not found')
+    }
+  )
+
+  server.registerTool(
+    'delete_categories',
+    {
+      title: 'Delete categories',
+      description:
+        'Deletes categories by id — one or many. Nothing is lost with them: items that used a ' +
+        'deleted category keep their amounts and become uncategorized, so summary still counts ' +
+        'them, under "Uncategorized". Ids that were not deleted come back in not_deleted.',
+      inputSchema: z.object({
+        category_ids: z.array(z.string().uuid()).min(1).max(50),
+      }),
+    },
+    async ({ category_ids }, ctx) => {
+      const db = clientFor(ctx)
+      if (!db) return fail('No access token.')
+      const { data, error } = await db
+        .schema('budget')
+        .from('categories')
+        .delete()
+        .in('id', category_ids)
+        .select('id, name, kind')
+      if (error) return failWrite(error)
+      if (!data?.length) {
+        return failNoRow(
+          category_ids.length > 1 ? 'None of those categories were found' : 'Category not found'
+        )
+      }
+      const deletedIds = new Set(data.map((c) => c.id))
+      return ok({
+        deleted: data,
+        not_deleted: category_ids.filter((id) => !deletedIds.has(id)),
+      })
     }
   )
 
@@ -413,6 +506,163 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
       } catch (e) {
         return fail(e instanceof Error ? e.message : String(e))
       }
+    }
+  )
+
+  server.registerTool(
+    'update_transaction',
+    {
+      title: 'Update transaction',
+      description:
+        'Changes a transaction. Only the fields passed are touched, and title: null clears it. ' +
+        'Items follow their transaction: moving occurred_at or currency_code moves every item ' +
+        'with it. To change what an item says, use update_transaction_item.',
+      inputSchema: z.object({
+        transaction_id: z.string().uuid(),
+        title: z.string().nullable().optional(),
+        occurred_at: z.string().optional(),
+        currency_code: z.string().min(3).max(3).optional(),
+      }),
+    },
+    async ({ transaction_id, title, occurred_at, currency_code }, ctx) => {
+      const db = clientFor(ctx)
+      if (!db) return fail('No access token.')
+      const patch = {
+        ...(title !== undefined ? { title } : {}),
+        ...(occurred_at !== undefined ? { occurred_at } : {}),
+        ...(currency_code !== undefined ? { currency_code } : {}),
+      }
+      if (!Object.keys(patch).length) {
+        return fail('Nothing to change: pass title, occurred_at or currency_code.')
+      }
+      const { data, error } = await db
+        .schema('budget')
+        .from('transactions')
+        .update(patch)
+        .eq('id', transaction_id)
+        .select('id, title, occurred_at, currency_code')
+        .maybeSingle()
+      if (error) return failWrite(error)
+      return data ? ok(data) : failNoRow('Transaction not found')
+    }
+  )
+
+  server.registerTool(
+    'delete_transaction',
+    {
+      title: 'Delete transaction',
+      description:
+        'Deletes a transaction with all of its items. The items go with it in the database, so ' +
+        'there is nothing left to delete afterwards. This is also how a whole entry is removed ' +
+        'when only one item is left in it.',
+      inputSchema: z.object({
+        transaction_id: z.string().uuid(),
+      }),
+    },
+    async ({ transaction_id }, ctx) => {
+      const db = clientFor(ctx)
+      if (!db) return fail('No access token.')
+      const { data, error } = await db
+        .schema('budget')
+        .from('transactions')
+        .delete()
+        .eq('id', transaction_id)
+        .select('id, title, occurred_at, currency_code')
+        .maybeSingle()
+      if (error) return failWrite(error)
+      return data ? ok({ deleted: data }) : failNoRow('Transaction not found')
+    }
+  )
+
+  server.registerTool(
+    'update_transaction_item',
+    {
+      title: 'Update item',
+      description:
+        'Changes one item of a transaction. Only the fields passed are touched. The amount stays ' +
+        'positive — an expense becomes income by moving the item to a category of the other kind, ' +
+        'not by its sign — and category_id: null leaves the item uncategorized. Date and currency ' +
+        'belong to the transaction, so they are changed with update_transaction.',
+      inputSchema: z.object({
+        item_id: z.string().uuid(),
+        name: z.string().min(1).optional(),
+        amount: z.number().positive().optional(),
+        category_id: z.string().uuid().nullable().optional(),
+      }),
+    },
+    async ({ item_id, name, amount, category_id }, ctx) => {
+      const db = clientFor(ctx)
+      if (!db) return fail('No access token.')
+      const patch = {
+        ...(name !== undefined ? { name } : {}),
+        ...(amount !== undefined ? { amount } : {}),
+        ...(category_id !== undefined ? { category_id } : {}),
+      }
+      if (!Object.keys(patch).length) {
+        return fail('Nothing to change: pass name, amount or category_id.')
+      }
+      const { data, error } = await db
+        .schema('budget')
+        .from('transaction_items')
+        .update(patch)
+        .eq('id', item_id)
+        .select('id, transaction_id, name, amount, category_id')
+        .maybeSingle()
+      if (error) return failWrite(error)
+      return data ? ok(data) : failNoRow('Item not found')
+    }
+  )
+
+  server.registerTool(
+    'delete_transaction_item',
+    {
+      title: 'Delete item',
+      description:
+        'Deletes one item of a transaction. The last item of a transaction is not deleted this ' +
+        'way — an entry with nothing in it is not useful — delete the transaction instead.',
+      inputSchema: z.object({
+        item_id: z.string().uuid(),
+      }),
+    },
+    async ({ item_id }, ctx) => {
+      const db = clientFor(ctx)
+      if (!db) return fail('No access token.')
+
+      // Read before delete: the count is what decides whether this item may go
+      // at all, and afterwards there is nothing left to count.
+      const { data: item, error: readError } = await db
+        .schema('budget')
+        .from('transaction_items')
+        .select('id, transaction_id')
+        .eq('id', item_id)
+        .maybeSingle()
+      if (readError) return fail(readError.message)
+      if (!item) return fail('Item not found.')
+
+      const { count, error: countError } = await db
+        .schema('budget')
+        .from('transaction_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('transaction_id', item.transaction_id)
+      if (countError) return fail(countError.message)
+      if ((count ?? 0) <= 1) {
+        return fail(
+          'This is the only item of its transaction. Deleting it would leave an empty entry — ' +
+            `delete the transaction itself instead: delete_transaction ${item.transaction_id}.`
+        )
+      }
+
+      const { data, error } = await db
+        .schema('budget')
+        .from('transaction_items')
+        .delete()
+        .eq('id', item_id)
+        .select('id, transaction_id, name, amount, category_id')
+        .maybeSingle()
+      if (error) return failWrite(error)
+      // The row was there a moment ago, so an empty answer here is the silent
+      // refusal rather than a missing item.
+      return data ? ok({ deleted: data }) : failNoRow('Item not deleted')
     }
   )
 }
