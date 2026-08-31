@@ -1,0 +1,99 @@
+import {
+  Assistant,
+  AssistantExample,
+  Reason,
+  Reasons,
+  Space,
+  Spaces,
+  Step,
+  Steps,
+  StructureNote,
+} from '@/components/blog/structure'
+
+export const modules = [
+  { icon: 'wallet', label: 'Budget' },
+  { icon: 'list', label: 'Lists' },
+  { icon: 'circle-check', label: 'Tasks' },
+  { icon: 'notebook-pen', label: 'Notes' },
+  { icon: 'repeat', label: 'Habits' },
+]
+
+Unitcore is a handful of personal products — budget, lists, tasks, notes, habits — that
+all run through one assistant in Claude. Underneath them sits a single idea: a space is a
+circle of people and everything they keep together. You can be in several.
+
+Everything below follows from that one idea.
+
+## After you sign up
+
+There is no setup step to get through. The account, the first space and the modules inside
+it arrive together.
+
+<Steps>
+  <Step icon="user-plus" number="01" title="You sign up">One account, one login.</Step>
+  <Step icon="square-dashed-bottom-code" number="02" title="A personal space appears">Created by default. Only you inside.</Step>
+  <Step icon="toggle-right" number="03" title="Modules are already on">Every module belongs to the space, not to you.</Step>
+  <Step icon="mail-plus" number="04" title="You invite someone">A new space for that circle — invite once, they see all of it.</Step>
+</Steps>
+
+## One person, two spaces
+
+A space is not a folder, and it is not a workspace you switch between for tidiness — it is
+a circle of people. Anna is in two of them, with one account:
+
+<Spaces account="Anna" accountNote="one account" ownerLabel="owner" memberLabel="member">
+  <Space
+    icon="lock"
+    name="Personal"
+    badge="1 member"
+    people={[{ initial: 'A', you: true }]}
+    peopleLabel="Anna — owner"
+    description="Your own budget, your own lists. Nobody else can reach in."
+    modulesLabel="Modules"
+    modules={modules}
+  />
+  <Space
+    icon="users"
+    name="Family"
+    badge="3 members"
+    people={[{ initial: 'A', you: true }, { initial: 'M' }, { initial: 'L' }]}
+    peopleLabel="Anna — member · Max — owner · Lea"
+    description="Everyone inside sees everything. Nobody outside sees anything."
+    modulesLabel="Modules"
+    modules={modules}
+  />
+</Spaces>
+
+<StructureNote>
+  The same modules on both sides, the same Anna — a different circle of people. That is the
+  only thing a space changes, and it is what keeps personal and shared apart.
+</StructureNote>
+
+## Which space the assistant works in
+
+You never tell the assistant which space to look in. It works inside the one you are
+already in, so the same sentence lands somewhere different depending on where you say it.
+
+<Assistant
+  title="One assistant in Claude"
+  description="You talk to one assistant. It works inside whichever space you are in."
+>
+  <AssistantExample context="in Family">“Add milk to the shopping list.” → Family lists.</AssistantExample>
+  <AssistantExample context="in Personal">“How much did I spend this month?” → your budget only.</AssistantExample>
+</Assistant>
+
+## Why it is built this way
+
+The circle of people is drawn once, and everything else leans on it:
+
+<Reasons>
+  <Reason icon="shield">One privacy boundary for every product</Reason>
+  <Reason icon="user-check">Invite once — it works across every module</Reason>
+  <Reason icon="plug-zap">A new module switches on by itself — nothing to configure</Reason>
+  <Reason icon="focus">The assistant sees exactly one context</Reason>
+  <Reason icon="split">Personal and shared never mix</Reason>
+  <Reason icon="log-out">Leave a space and the access is gone entirely</Reason>
+</Reasons>
+
+Connecting all of this to Claude is the other half of the story, and it takes a couple of
+minutes: [Connect Unitcore to Claude](/en/blog/unitcore-setup).

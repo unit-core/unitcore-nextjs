@@ -35,7 +35,7 @@ export interface Article {
 const articles: readonly Article[] = [
   {
     slug: 'unitcore-setup',
-    date: '2026-08-30',
+    date: '2026-08-31',
     tags: ['mcp', 'setup', 'oauth', 'claude'],
     translations: {
       en: {
@@ -49,6 +49,25 @@ const articles: readonly Article[] = [
         description:
           'Пошаговая настройка, единственная настройка OAuth, на которой все спотыкаются, и что Claude может и не может делать с вашим бюджетом после подключения.',
         load: () => import('./unitcore-setup/ru.mdx'),
+      },
+    },
+  },
+  {
+    slug: 'product-structure',
+    date: '2026-08-30',
+    tags: ['spaces', 'product', 'claude'],
+    translations: {
+      en: {
+        title: 'How Unitcore is put together',
+        description:
+          'One account, several spaces, the same modules inside each one — the shape of the product, and why personal and shared never mix.',
+        load: () => import('./product-structure/en.mdx'),
+      },
+      ru: {
+        title: 'Как устроен Unitcore',
+        description:
+          'Один аккаунт, несколько пространств, одни и те же модули в каждом — из чего собран продукт и почему личное не смешивается с общим.',
+        load: () => import('./product-structure/ru.mdx'),
       },
     },
   },
