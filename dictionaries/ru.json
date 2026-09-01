@@ -3,7 +3,16 @@
     "home": "Главная",
     "blog": "Статьи",
     "language": "Язык",
-    "settings": "Настройки"
+    "settings": "Настройки",
+    "account": "Аккаунт",
+    "signIn": "Войти",
+    "signOut": "Выйти",
+    "theme": {
+      "label": "Тема",
+      "light": "Светлая",
+      "dark": "Тёмная",
+      "system": "Системная"
+    }
   },
   "blog": {
     "title": "Статьи",

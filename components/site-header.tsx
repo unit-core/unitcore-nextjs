@@ -1,7 +1,6 @@
 import Link from 'next/link'
 
-import { LanguageSwitcher } from '@/components/language-switcher'
-import { SettingsNavLink } from '@/components/settings-nav-link'
+import { UserMenu } from '@/components/user-menu'
 import { articleLocaleMap } from '@/content/blog/registry'
 import { type Locale } from '@/lib/i18n/config'
 import { localeHref } from '@/lib/i18n/urls'
@@ -26,9 +25,8 @@ export function SiteHeader({ locale, dict }: SiteHeaderProps) {
           >
             {dict.blog}
           </Link>
-          <SettingsNavLink label={dict.settings} />
         </nav>
-        <LanguageSwitcher current={locale} articleLocales={articleLocaleMap()} />
+        <UserMenu dict={dict} articleLocales={articleLocaleMap()} />
       </div>
     </header>
   )

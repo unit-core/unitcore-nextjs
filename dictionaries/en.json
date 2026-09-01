@@ -3,7 +3,16 @@
     "home": "Home",
     "blog": "Articles",
     "language": "Language",
-    "settings": "Settings"
+    "settings": "Settings",
+    "account": "Account",
+    "signIn": "Log in",
+    "signOut": "Sign out",
+    "theme": {
+      "label": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    }
   },
   "blog": {
     "title": "Articles",

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { lang } from 'next/root-params'
 
 import { SiteHeader } from '@/components/site-header'
+import { ThemeProvider } from '@/components/theme-provider'
 import { getDictionary } from '@/lib/i18n/dictionaries'
 import { isLocale, locales } from '@/lib/i18n/config'
 import { SITE_URL } from '@/lib/i18n/urls'
@@ -51,10 +52,15 @@ export default async function RootLayout(props: LayoutProps<'/[lang]'>) {
     <html
       lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // next-themes writes the theme class onto this element before React
+      // hydrates, so the server markup is expected to differ here.
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <SiteHeader locale={locale} dict={dict.nav} />
-        {props.children}
+        <ThemeProvider>
+          <SiteHeader locale={locale} dict={dict.nav} />
+          {props.children}
+        </ThemeProvider>
       </body>
     </html>
   )

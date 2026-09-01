@@ -19,8 +19,8 @@ export default async function HomePage() {
         A shared budget you manage by talking to your AI client, over MCP.
       </p>
       <div className="flex flex-wrap items-center gap-3">
-        <Link href={localeHref(locale, '/auth/sign-up')} className={buttonVariants()}>
-          {dict.auth.signUp.title}
+        <Link href={localeHref(locale, '/auth/login')} className={buttonVariants()}>
+          {dict.nav.signIn}
         </Link>
         <Link
           href={localeHref(locale, '/blog')}
