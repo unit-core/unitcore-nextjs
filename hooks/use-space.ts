@@ -20,7 +20,7 @@ export interface SpaceDetail {
  */
 export interface SpaceMember {
   userId: string
-  fullName: string | null
+  displayName: string | null
   avatarUrl: string | null
   isOwner: boolean
   isMe: boolean
@@ -48,7 +48,7 @@ interface SpaceRow {
 
 interface MemberRow {
   user_id: string
-  full_name: string | null
+  display_name: string | null
   avatar_url: string | null
   is_owner: boolean
   is_me: boolean
@@ -102,7 +102,7 @@ export const useSpace = (spaceId: string, messages: SpaceMessages) => {
 
       const { data: people, error: peopleError } = await supabase
         .from('space_people')
-        .select('user_id, full_name, avatar_url, is_owner, is_me, created_at')
+        .select('user_id, display_name, avatar_url, is_owner, is_me, created_at')
         .eq('space_id', spaceId)
         .order('created_at')
         .returns<MemberRow[]>()
@@ -125,7 +125,7 @@ export const useSpace = (spaceId: string, messages: SpaceMessages) => {
       setMembers(
         (people ?? []).map((person) => ({
           userId: person.user_id,
-          fullName: person.full_name,
+          displayName: person.display_name,
           avatarUrl: person.avatar_url,
           isOwner: person.is_owner,
           isMe: person.is_me,

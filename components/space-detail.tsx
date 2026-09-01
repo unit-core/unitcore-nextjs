@@ -39,7 +39,7 @@ function MemberRow({
   isRemoving: boolean
   onRemove: () => void
 }) {
-  const name = member.fullName?.trim()
+  const name = member.displayName?.trim()
 
   return (
     <li className="flex items-center gap-3">
