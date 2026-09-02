@@ -30,6 +30,9 @@
       "system": "System"
     }
   },
+  "home": {
+    "tagline": "Your data, in your assistant."
+  },
   "blog": {
     "title": "Articles",
     "subtitle": "Guides and notes about running your budget through an AI client.",
