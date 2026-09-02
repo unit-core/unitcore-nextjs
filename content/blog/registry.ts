@@ -34,6 +34,25 @@ export interface Article {
  */
 const articles: readonly Article[] = [
   {
+    slug: 'chatgpt-setup',
+    date: '2026-09-02',
+    tags: ['mcp', 'setup', 'oauth', 'chatgpt'],
+    translations: {
+      en: {
+        title: 'Connect Unitcore to ChatGPT',
+        description:
+          'Developer mode, a custom MCP app, and the one choice the consent screen asks you to make — what ChatGPT may and may not do with your budget once it is connected.',
+        load: () => import('./chatgpt-setup/en.mdx'),
+      },
+      ru: {
+        title: 'Подключите Unitcore к ChatGPT',
+        description:
+          'Режим разработчика, своё MCP-приложение и единственный выбор, который делает за вас экран согласия, — что ChatGPT может и не может делать с вашим бюджетом после подключения.',
+        load: () => import('./chatgpt-setup/ru.mdx'),
+      },
+    },
+  },
+  {
     slug: 'unitcore-setup',
     date: '2026-08-31',
     tags: ['mcp', 'setup', 'oauth', 'claude'],

@@ -1,0 +1,211 @@
+import { Callout } from '@/components/blog/callout'
+import { CopyField } from '@/components/blog/copy-field'
+import { Disclosure } from '@/components/blog/disclosure'
+import { InstallButton } from '@/components/blog/install-button'
+import { chatgptAppsUrl, CONNECTOR_NAME, MCP_URL } from '@/lib/connectors'
+
+Unitcore connects to ChatGPT the way it connects to any other AI client: you add the
+server address, sign in to your Unitcore account and approve the request. From then on
+ChatGPT reaches your data as you, and strictly within the boundaries you see yourself.
+
+There is one difference from Claude worth knowing up front: ChatGPT keeps custom MCP
+servers behind developer mode, and that has to be switched on first. The rest is the same
+couple of minutes, once per account.
+
+## Connect in one click
+
+<InstallButton
+  href={chatgptAppsUrl()}
+  note="Opens the ChatGPT settings section where custom apps are created. Unlike Claude, ChatGPT cannot be handed a name and an address to prefill — the address is below, with a copy button next to it."
+>
+  Open ChatGPT app settings
+</InstallButton>
+
+This is the only value you will have to type:
+
+<CopyField label="MCP Server URL" value={MCP_URL} />
+
+No keys, no tokens, no passwords go anywhere — access is granted through your ordinary
+Unitcore account.
+
+<Callout type="note">
+  **Developer mode comes first.** There is no "create your own app" item in settings while
+  it is off. It is a toggle at the bottom of that same section — step 1.
+</Callout>
+
+## Before you start
+
+- **Sign in to Unitcore in this same browser.** Then the authorization step takes you
+  straight to the consent screen instead of a login form.
+- **You need ChatGPT on the web.** A custom app can only be created on chatgpt.com. Once
+  created it is available in the mobile app too, but it cannot be added from a phone.
+- **Any plan will do, including the free one.** Developer mode is there on Free as well —
+  it is simply off by default, and nothing points you to it.
+- **On Business, Enterprise or Edu:** a workspace admin enables developer mode first —
+  for themselves, and through role settings for everyone else.
+
+## Step 1. Turn on developer mode
+
+| Where you work | What to do |
+| --- | --- |
+| **A personal account, any plan** | Avatar in the top right → **Settings** → **Apps** → **Advanced settings** → **Developer mode** |
+| **Business, Enterprise, Edu** | The same path, but the toggle only appears once an admin has granted access in the workspace settings |
+| **ChatGPT on your phone** | Apps are added from a computer only. Add it once and it shows up on the phone by itself |
+
+Some builds still call the section **Connectors** rather than **Apps** — it is the same
+place.
+
+## Step 2. Create the app
+
+Under **Apps**, press **Create** and fill in the form.
+
+<CopyField label="Name" value={CONNECTOR_NAME} />
+
+<CopyField label="MCP Server URL" value={MCP_URL} />
+
+The address is needed in full, including `/api/mcp`: there is no MCP server at the domain
+root.
+
+The name is only a label — it is how you recognize this connection in the list, and it
+grants nothing. ChatGPT introduces itself to the server as `ChatGPT` whatever you type
+here.
+
+Under **Authentication**, choose **OAuth**. Below it is a checkbox confirming that you
+trust this server; you have to tick it. Then press **Scan tools**: ChatGPT reaches the
+server, gets a `401` along with the address of the authorization server, registers itself
+as an OAuth client, and lists the tools it found. Then press **Create**.
+
+<Disclosure summary="Why the other auth options do not fit">
+  **No authentication** tells ChatGPT the server answers without a sign-in. It does not: a
+  request without a token gets a `401`, so connecting without authorization yields nothing
+  at all.
+
+  **API key** asks for a static key you obtained beforehand. Unitcore has no such path,
+  deliberately — a key living in another service's settings can be neither scoped nor
+  revoked one client at a time.
+
+  There is no OAuth client to register ahead of time either: clients register dynamically,
+  and each connection gets its own. You will never see a client ID or a secret.
+</Disclosure>
+
+## Step 3. Sign in and approve
+
+ChatGPT opens a Unitcore page — with a login form first, if you are not signed in yet.
+
+Then comes the consent screen. Three rows on it are worth actually reading:
+
+- **Client** — the name of the client asking for access; here that is `ChatGPT`;
+- **Redirects to** — where you will be returned; for ChatGPT that is an address like
+  `https://chatgpt.com/connector/oauth/…`. Every app gets its own, but the domain is
+  always `chatgpt.com`;
+- **Signed in as** — whether this is your Unitcore account.
+
+Below them is something no client's own dialog offers: **what this client may do**.
+
+| Choice | What it means |
+| --- | --- |
+| **Read and write** | Add and edit transactions, categories and spaces |
+| **Read only** | Look at your budget without changing anything |
+
+Starting read-only costs you nothing: the level can be changed later in one click, on the
+connected applications page.
+
+**Allow access** issues the token; **Deny** ends the flow and no access is granted. After
+you approve you are returned to ChatGPT, and the app shows up in the list as a **draft** —
+that is expected and does not stop you using it.
+
+## Step 4. Turn the app on in a conversation
+
+The app is attached to your account, but each message enables it separately: in the
+composer press **+**, choose **More** → **Developer mode** and tick Unitcore.
+
+That selection applies to one message. If a follow-up needs fresh data, `@`-mention the
+app again. That is ChatGPT's behaviour, not ours.
+
+## Step 5. Check that it works
+
+<CopyField multiline value="Show me my Unitcore spaces" />
+
+The answer should contain your personal space, created automatically when you signed up.
+If you see it, you are connected.
+
+Now a write, if you granted one:
+
+<CopyField multiline value="Add a EUR 12.40 expense — lunch, category Food, today" />
+
+Before the call ChatGPT shows you the JSON payload it is about to send and asks you to
+confirm. That is a built-in developer-mode safeguard, and it is worth reading rather than
+clicking past: the amount and the category are right there in it.
+
+## Why this is safe to connect
+
+Connecting an AI client to your data deserves more than a reassuring sentence. The rule is
+this: **a tool acts as the user who called it, and never as anyone else**, and four things
+keep that rule from eroding:
+
+- **Isolation is enforced by Postgres, not by tool code.** The request carries your OAuth
+  token, and Row Level Security decides what comes back. Nothing in the tool bodies
+  enforces isolation, so nothing in them can accidentally undo it.
+- **"Read only" is a database policy too,** not a polite request to the model. If a
+  connection is marked read-only, writes fail no matter how insistently the assistant is
+  asked.
+- **Only OAuth tokens are accepted.** Verification requires a `client_id` claim, so a web
+  session lifted from a browser is not a key to this server. For the same reason write
+  access can only be changed from a browser: a client cannot grant it to itself.
+- **A service-role key cannot reach the tools.** That key bypasses RLS, and the build
+  fails if the MCP code so much as reads an environment variable named `SECRET` or
+  `SERVICE_ROLE`.
+
+There is an end-to-end test as well: it drives every read tool as one user and fails if an
+identifier belonging to another shows up in the answer.
+
+## How to disconnect
+
+- **Selectively:** on [**Settings → Connected applications**](/en/settings/connections) in Unitcore, every connection
+  has a **Write access** toggle. Switch it off and ChatGPT can read and reckon but write
+  nothing.
+- **Entirely:** same page, **Revoke access**. The refresh token dies at once; an access
+  token already issued keeps working for up to an hour, as the authorization server has no
+  revocation endpoint yet.
+- **On the ChatGPT side:** **Settings** → **Apps** → Unitcore → delete. Do both: deleting
+  it in ChatGPT does not revoke the tokens it was issued.
+
+## If something goes wrong
+
+| What you see | What it means |
+| --- | --- |
+| No **Create** in settings, nothing to press | Developer mode is off — and on Business, Enterprise and Edu, not yet granted by an admin |
+| **Scan tools** finds no tools | Check the address: exactly the one above, over `https`, including `/api/mcp` |
+| You approved and came back to an authorization error | The browser blocked the return, or the window was closed too early. Delete the app and create it again |
+| ChatGPT says it has no access to Unitcore | The app is not on for this message: **+** → **More** → **Developer mode** |
+| `This client has read-only access to your Unitcore data.` | The connection was granted for reading. Turn on **Write access** on the connected applications page |
+| `401` | The token expired, or a browser session token was used. Reconnect the client |
+| `No access token.` | The request reached the server without a bearer token |
+| `No personal space found. Pass space_id explicitly.` | There is no default space — name the space in your request |
+| The list of spaces is empty | You signed in to a different Unitcore account. Delete the app, sign out of the extra account and connect again |
+| New tools shipped and ChatGPT does not see them | The tool list is captured at connection time. Open the app in settings and run **Scan tools** again |
+
+## Questions people ask
+
+**Will the free ChatGPT do?**
+Yes. Developer mode is available on the free plan too — it is off by default, but it is
+switched on in the same **Advanced settings**, and a custom app is created after that just
+as it is on any other plan.
+
+**Does it work in Deep Research?**
+Not yet. Deep Research requires two specific tools from the server, `search` and `fetch`;
+Unitcore does not provide them — the connector is built for regular chat.
+
+**Does this work on a phone?**
+Yes. ChatGPT reaches Unitcore from its own cloud rather than from your device, so an app
+created once in the browser works in the mobile app too.
+
+**If I connect from a work account, will colleagues see my data?**
+No. Access is bound to your Unitcore account, not to a device or a ChatGPT workspace. Do
+note that on Business and Enterprise a published app is visible to everyone in the
+workspace — what they see is the connection form, not your data, and each of them signs
+in to their own Unitcore account.
+
+**Can I connect Claude and ChatGPT at the same time?**
+Yes. They are two separate clients with separate permissions: one can be allowed to write
+while the other stays read-only. Both appear on the connected applications page.

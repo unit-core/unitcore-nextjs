@@ -38,3 +38,14 @@ export function claudeInstallUrl(scope: 'personal' | 'organization' = 'personal'
   })
   return `https://claude.ai/${path}/connectors?${params}`
 }
+
+/**
+ * ChatGPT has no equivalent of Claude's prefill link: its "create app" dialog
+ * cannot be handed a name and a URL, so the article pairs this with a copy
+ * field instead. The hash route opens Settings straight at the section where
+ * custom apps are created — the pane a reader has to reach anyway, one field
+ * away from pasting MCP_URL. Some builds still label that section Connectors.
+ */
+export function chatgptAppsUrl(): string {
+  return 'https://chatgpt.com/#settings/Connectors'
+}
