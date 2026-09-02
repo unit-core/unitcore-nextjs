@@ -5,6 +5,22 @@
     "language": "Language",
     "settings": "Settings",
     "account": "Account",
+    "tag": {
+      "title": "Your tag",
+      "hint": "Show it to whoever adds you to their space.",
+      "copy": "Copy tag",
+      "copied": "Copied",
+      "copyFailed": "Could not copy. Select the tag and copy it by hand.",
+      "regenerate": "New tag",
+      "dialogTitle": "Get a new tag?",
+      "dialogBody": "The old tag stops working. Invitations already sent are unaffected.",
+      "confirm": "Get a new tag",
+      "cancel": "Cancel",
+      "loading": "Loading...",
+      "tooSoon": "The tag was just changed, give it a minute.",
+      "notAllowed": "The tag can only be changed in the Unitcore app.",
+      "unknown": "Could not change the tag. Try again."
+    },
     "signIn": "Log in",
     "signOut": "Sign out",
     "theme": {
@@ -126,6 +142,26 @@
         "submit": "Create",
         "submitting": "Creating..."
       },
+      "invites": {
+        "title": "Invitations",
+        "invitedBy": "{name} invites you",
+        "members": "members: {count}",
+        "warning": "You will see every transaction in this space and be able to change them. Everything you add, the other members see.",
+        "accept": "Accept",
+        "accepting": "Accepting...",
+        "decline": "Decline",
+        "declining": "Declining...",
+        "error": "Could not load your invitations:",
+        "errors": {
+          "notFound": "This invitation is no longer valid.",
+          "expired": "This invitation has expired. Ask to be invited again.",
+          "revoked": "This invitation was taken back.",
+          "spaceFull": "This space already has as many members as it can hold.",
+          "emailUnconfirmed": "Confirm your email address first — we sent the letter when you signed up.",
+          "notAllowed": "Invitations can only be answered in the Unitcore app.",
+          "unknown": "That did not work. Try again."
+        }
+      },
       "detail": {
         "back": "All spaces",
         "notFound": "This space does not exist, or you are no longer a member of it.",
@@ -141,24 +177,45 @@
           "you": "You",
           "owner": "Owner",
           "remove": "Remove",
-          "removing": "Removing..."
+          "removing": "Removing...",
+          "notAMember": "This person is no longer a member of this space."
         },
         "invite": {
-          "label": "Add someone",
-          "hint": "By the exact address of an account that already exists — there are no invitation emails yet.",
-          "placeholder": "name@example.com",
-          "submit": "Add",
-          "submitting": "Adding...",
-          "notFound": "No account with this address.",
-          "already": "This person is already a member."
+          "label": "Member tag",
+          "placeholder": "UC-XXXX-XXXXXX",
+          "hint": "Ask the person to copy the tag from their profile.",
+          "submit": "Invite",
+          "submitting": "Sending...",
+          "confirmTitle": "Invite to this space?",
+          "confirmBody": "{name} gets an invitation and can accept or decline it.",
+          "confirm": "Invite",
+          "unnamed": "Unnamed",
+          "notFound": "No such tag. Check that it was copied correctly.",
+          "self": "That is your own tag.",
+          "already": "This person is already a member.",
+          "alreadyInvited": "This invitation was already sent.",
+          "spaceFull": "This space already has as many members as it can hold.",
+          "tooManyPending": "Too many unanswered invitations. Wait for an answer or take one back.",
+          "rateLimited": "Too many attempts. Try again in an hour.",
+          "sent": "Invitation sent."
+        },
+        "pending": {
+          "title": "Waiting for an answer",
+          "invited": "invited {date}",
+          "expires": "expires {date}",
+          "unnamed": "Unnamed",
+          "revoke": "Take back",
+          "revoking": "Taking back...",
+          "gone": "This invitation is no longer waiting for an answer."
         },
         "leave": {
           "title": "Leave this space",
-          "hint": "You lose access to everything in it. Nothing is deleted, and the owner can add you back.",
+          "hint": "You lose access to everything in it. Nothing is deleted, and the owner can invite you again.",
           "submit": "Leave",
           "submitting": "Leaving...",
           "dialogTitle": "Leave this space?",
-          "dialogBody": "Its transactions and categories disappear from your budget. Nothing is deleted, and the owner can add you back."
+          "dialogBody": "Its transactions and categories disappear from your budget. Nothing is deleted, and the owner can invite you again.",
+          "notAMember": "You are no longer a member of this space."
         },
         "remove": {
           "title": "Delete this space",
@@ -172,7 +229,8 @@
         },
         "errors": {
           "notAllowed": "Not allowed: only the owner can change a space, and the personal space can never be deleted.",
-          "silent": "Nothing changed: this space is not yours any more, or it is already gone."
+          "silent": "Nothing changed: this space is not yours any more, or it is already gone.",
+          "unknown": "That did not work. Try again."
         }
       }
     }

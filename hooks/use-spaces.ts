@@ -142,5 +142,11 @@ export const useSpaces = () => {
     return true
   }, [])
 
-  return { spaces, isLoading, isCreating, error, createSpace }
+  /**
+   * Asked for by the invitations section above the list: accepting one makes a
+   * space yours, and `my_spaces` only started answering about it a moment ago.
+   */
+  const reload = useCallback(() => setReloadToken((token) => token + 1), [])
+
+  return { spaces, isLoading, isCreating, error, createSpace, reload }
 }

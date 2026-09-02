@@ -4,8 +4,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useId, useState } from 'react'
 
-import { useSpace, type SpaceMember } from '@/hooks/use-space'
+import {
+  useSpace,
+  type InvitePreview,
+  type PendingInvite,
+  type SpaceMember,
+} from '@/hooks/use-space'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
+import { fill } from '@/lib/i18n/interpolate'
 import { useLocale } from '@/lib/i18n/use-locale'
 import { localeHref } from '@/lib/i18n/urls'
 import {
@@ -26,6 +32,26 @@ type SpacesDictionary = Dictionary['settings']['spaces']
 
 const getInitial = (value: string) => value.trim().charAt(0).toUpperCase() || '?'
 
+/**
+ * Avatars come from whichever provider the person signed up with, so they are
+ * not routed through next/image: no remote pattern can be allowlisted ahead of
+ * an account that does not exist yet. The fallback is "?" rather than the
+ * first letter of the placeholder — an initial taken from "Unnamed" looks like
+ * a name nobody has.
+ */
+function PersonAvatar({ name, url }: { name: string | null; url: string | null }) {
+  return (
+    <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted text-sm font-medium">
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" className="size-full object-cover" />
+      ) : (
+        getInitial(name ?? '')
+      )}
+    </div>
+  )
+}
+
 function MemberRow({
   member,
   dict,
@@ -43,19 +69,7 @@ function MemberRow({
 
   return (
     <li className="flex items-center gap-3">
-      <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted text-sm font-medium">
-        {member.avatarUrl ? (
-          // Avatars come from whichever provider the member signed up with, so
-          // they are not routed through next/image: no remote pattern can be
-          // allowlisted ahead of an account that does not exist yet.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={member.avatarUrl} alt="" className="size-full object-cover" />
-        ) : (
-          // "?" rather than the first letter of the placeholder: an initial
-          // taken from "Unnamed" looks like a name nobody has.
-          getInitial(name ?? '')
-        )}
-      </div>
+      <PersonAvatar name={name ?? null} url={member.avatarUrl} />
 
       <div className="flex flex-1 flex-wrap items-center gap-1.5">
         <span className={name ? 'text-sm' : 'text-sm text-muted-foreground'}>
@@ -91,23 +105,86 @@ function MemberRow({
   )
 }
 
+/** An invitation nobody has answered yet, and the way to take it back. */
+function PendingRow({
+  invite,
+  dict,
+  formatDate,
+  isRevoking,
+  onRevoke,
+}: {
+  invite: PendingInvite
+  dict: SpacesDictionary['detail']['pending']
+  formatDate: (value: string) => string
+  isRevoking: boolean
+  onRevoke: () => void
+}) {
+  const name = invite.inviteeName?.trim()
+
+  return (
+    <li className="flex items-center gap-3">
+      <PersonAvatar name={name ?? null} url={invite.inviteeAvatar} />
+
+      <div className="flex-1 space-y-0.5">
+        <p className={name ? 'text-sm' : 'text-sm text-muted-foreground'}>{name ?? dict.unnamed}</p>
+        <p className="text-xs text-muted-foreground">
+          {fill(dict.invited, { date: formatDate(invite.createdAt) })} ·{' '}
+          {fill(dict.expires, { date: formatDate(invite.expiresAt) })}
+        </p>
+      </div>
+
+      <Button type="button" variant="ghost" size="sm" disabled={isRevoking} onClick={onRevoke}>
+        {isRevoking ? dict.revoking : dict.revoke}
+      </Button>
+    </li>
+  )
+}
+
 export function SpaceDetail({ spaceId, dict }: { spaceId: string; dict: SpacesDictionary }) {
   const locale = useLocale()
   const router = useRouter()
   const nameId = useId()
-  const emailId = useId()
+  const tagId = useId()
   const confirmId = useId()
 
-  const { space, members, isLoading, error, busy, rename, remove, addMember, removeMember, leave } =
-    useSpace(spaceId, {
-      notAllowed: dict.detail.errors.notAllowed,
-      silent: dict.detail.errors.silent,
-      inviteNotFound: dict.detail.invite.notFound,
-      inviteAlready: dict.detail.invite.already,
-    })
+  const {
+    space,
+    members,
+    pendingInvites,
+    isLoading,
+    error,
+    busy,
+    rename,
+    remove,
+    previewInvite,
+    invite,
+    revokeInvite,
+    removeMember,
+    leave,
+  } = useSpace(spaceId, {
+    notAllowed: dict.detail.errors.notAllowed,
+    silent: dict.detail.errors.silent,
+    unknown: dict.detail.errors.unknown,
+    invite: {
+      notFound: dict.detail.invite.notFound,
+      self: dict.detail.invite.self,
+      already: dict.detail.invite.already,
+      spaceFull: dict.detail.invite.spaceFull,
+      tooManyPending: dict.detail.invite.tooManyPending,
+      rateLimited: dict.detail.invite.rateLimited,
+    },
+    pending: { gone: dict.detail.pending.gone },
+    members: { notAMember: dict.detail.members.notAMember },
+    leave: { notAMember: dict.detail.leave.notAMember },
+  })
 
   const [draftName, setDraftName] = useState<string | null>(null)
-  const [email, setEmail] = useState('')
+  const [tag, setTag] = useState('')
+  // Who the tag resolved to. Holding it is what makes the confirmation a
+  // confirmation: the second step shows a person, not the string that was
+  // typed, so a mistyped tag is caught by a human reading a name.
+  const [target, setTarget] = useState<InvitePreview | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [confirmName, setConfirmName] = useState('')
   const [isLeaveOpen, setIsLeaveOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -119,6 +196,8 @@ export function SpaceDetail({ spaceId, dict }: { spaceId: string; dict: SpacesDi
   const name = draftName ?? space?.name ?? ''
 
   const spacesHref = localeHref(locale, '/settings/spaces')
+  const formatDate = (value: string) =>
+    new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(new Date(value))
 
   const backLink = (
     <Link
@@ -155,10 +234,30 @@ export function SpaceDetail({ spaceId, dict }: { spaceId: string; dict: SpacesDi
     if (await rename(name)) setDraftName(null)
   }
 
-  const handleInvite = async (event: React.FormEvent) => {
+  /**
+   * Step one. Nothing is sent here: the tag is resolved to a person, and the
+   * dialog that opens is the only thing that can send anything. Sending on
+   * submit would mean a typo that happens to be somebody else's tag hands a
+   * stranger the space.
+   */
+  const handleLookup = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!email.trim()) return
-    if (await addMember(email)) setEmail('')
+    if (!tag.trim()) return
+    setNotice(null)
+    const found = await previewInvite(tag)
+    if (found) setTarget(found)
+  }
+
+  const handleInvite = async () => {
+    const outcome = await invite(tag)
+    setTarget(null)
+    if (!outcome) return
+    // `already_invited` is a success with different words: the invitation is
+    // open, it is the same one, and there is no second row anywhere.
+    setNotice(
+      outcome === 'already_invited' ? dict.detail.invite.alreadyInvited : dict.detail.invite.sent
+    )
+    setTag('')
   }
 
   const handleLeave = async () => {
@@ -178,6 +277,8 @@ export function SpaceDetail({ spaceId, dict }: { spaceId: string; dict: SpacesDi
     }
     setIsDeleteOpen(false)
   }
+
+  const targetName = target?.displayName?.trim() || dict.detail.invite.unnamed
 
   return (
     <div className="mt-8 space-y-6">
@@ -240,29 +341,62 @@ export function SpaceDetail({ spaceId, dict }: { spaceId: string; dict: SpacesDi
             ))}
           </ul>
 
+          {/* No form for a guest: `invite_to_space` answers 42501 to anyone who
+              is not the owner, and a button that cannot be used is a promise
+              the database does not intend to keep. */}
           {space.isMine && (
-            <form onSubmit={handleInvite} className="space-y-1.5 border-t pt-4">
-              <Label htmlFor={emailId}>{dict.detail.invite.label}</Label>
+            <form onSubmit={handleLookup} className="space-y-1.5 border-t pt-4">
+              <Label htmlFor={tagId}>{dict.detail.invite.label}</Label>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
-                  id={emailId}
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  id={tagId}
+                  value={tag}
+                  onChange={(event) => setTag(event.target.value)}
                   placeholder={dict.detail.invite.placeholder}
-                  disabled={busy?.kind === 'invite'}
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={busy?.kind === 'preview' || busy?.kind === 'invite'}
                 />
-                <Button type="submit" disabled={busy?.kind === 'invite' || !email.trim()}>
-                  {busy?.kind === 'invite'
+                <Button
+                  type="submit"
+                  disabled={busy?.kind === 'preview' || busy?.kind === 'invite' || !tag.trim()}
+                >
+                  {busy?.kind === 'preview' || busy?.kind === 'invite'
                     ? dict.detail.invite.submitting
                     : dict.detail.invite.submit}
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">{dict.detail.invite.hint}</p>
+              {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
             </form>
           )}
         </CardContent>
       </Card>
+
+      {/* Only what is still open. A declined or revoked invitation is history,
+          and history belongs in the event log, not in a list of things that
+          are about to happen. */}
+      {space.isMine && pendingInvites.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{dict.detail.pending.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
+              {pendingInvites.map((pending) => (
+                <PendingRow
+                  key={pending.id}
+                  invite={pending}
+                  dict={dict.detail.pending}
+                  formatDate={formatDate}
+                  isRevoking={busy?.kind === 'revokeInvite' && busy.inviteId === pending.id}
+                  onRevoke={() => void revokeInvite(pending.id)}
+                />
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {!space.isMine && (
         <Card>
@@ -309,6 +443,41 @@ export function SpaceDetail({ spaceId, dict }: { spaceId: string; dict: SpacesDi
           </CardContent>
         </Card>
       )}
+
+      {/* Step two, and the whole reason the tag is not sent on submit. */}
+      <AlertDialog
+        open={target !== null}
+        onOpenChange={(open) => {
+          if (!open) setTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{dict.detail.invite.confirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {fill(dict.detail.invite.confirmBody, { name: targetName })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="flex items-center gap-3">
+            <PersonAvatar name={target?.displayName ?? null} url={target?.avatarUrl ?? null} />
+            <span className="text-sm font-medium break-words">{targetName}</span>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>{dict.detail.cancel}</AlertDialogCancel>
+            <Button
+              type="button"
+              disabled={busy?.kind === 'invite'}
+              onClick={() => void handleInvite()}
+            >
+              {busy?.kind === 'invite'
+                ? dict.detail.invite.submitting
+                : dict.detail.invite.confirm}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={isLeaveOpen} onOpenChange={setIsLeaveOpen}>
         <AlertDialogContent>
