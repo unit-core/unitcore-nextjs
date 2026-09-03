@@ -8,7 +8,7 @@ import { type Locale } from './config.ts'
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ?? 'https://unitcore.io'
 
-/** `/protected` -> `/ru/protected`. Takes an unprefixed, absolute-ish path. */
+/** `/dashboard` -> `/ru/dashboard`. Takes an unprefixed, absolute-ish path. */
 export function localeHref(locale: Locale, path: string): string {
   const normalized = path.startsWith('/') ? path : `/${path}`
   return normalized === '/' ? `/${locale}` : `/${locale}${normalized}`

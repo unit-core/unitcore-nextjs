@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
       // Behind the session gate or machine-only; nothing here is worth indexing.
-      disallow: ['/*/auth/', '/*/oauth/', '/*/protected', '/api/', '/.well-known/'],
+      disallow: ['/*/auth/', '/*/oauth/', '/*/dashboard', '/api/', '/.well-known/'],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   }

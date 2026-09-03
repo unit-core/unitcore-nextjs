@@ -30,6 +30,23 @@
       "system": "System"
     }
   },
+  "dashboard": {
+    "title": "Dashboard",
+    "allSpaces": "All spaces",
+    "spentIn": "Spent in {month}",
+    "vsPrevious": "{change} vs last month",
+    "noPrevious": "nothing spent last month",
+    "uncategorized": "Uncategorized",
+    "other": "Other",
+    "noSpendingThisMonth": "Nothing spent this month.",
+    "recent": "Recent",
+    "recentDescription": "The latest entries across your spaces.",
+    "empty": {
+      "title": "Nothing to total up yet",
+      "description": "Once transactions land in one of your spaces, this page totals them up by month and by currency.",
+      "action": "Connect an assistant"
+    }
+  },
   "home": {
     "tagline": "Your data, in your assistant."
   },

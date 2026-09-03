@@ -52,7 +52,7 @@ export function SignUpForm({ dict, className, ...props }: SignUpFormProps) {
         options: {
           // Must be covered by the Redirect URLs allowlist of the Supabase
           // project, which now has to permit the locale-prefixed form.
-          emailRedirectTo: `${window.location.origin}${localeHref(locale, '/protected')}`,
+          emailRedirectTo: `${window.location.origin}${localeHref(locale, '/dashboard')}`,
         },
       })
       if (error) throw error

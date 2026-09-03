@@ -107,6 +107,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // The mirror image: somebody who is signed in has no use for the landing page,
+  // so /{locale} hands over to the dashboard. It happens here rather than in the
+  // page because reading the session in app/[lang]/page.tsx would mean calling
+  // cookies(), which opts the landing page out of static rendering for everyone,
+  // signed in or not. getClaims() has already been paid for above.
+  if (user && stripLocale(request.nextUrl.pathname) === '/') {
+    const url = request.nextUrl.clone()
+    // localeFor reads the prefix off the path, so /ru goes to /ru/dashboard and
+    // the reader stays in the language they were already in.
+    url.pathname = `/${localeFor(request)}/dashboard`
+    return NextResponse.redirect(url)
+  }
+
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:
   // 1. Pass the request in it, like so:
