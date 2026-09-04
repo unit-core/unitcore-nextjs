@@ -21,13 +21,21 @@ const geistMono = Geist_Mono({
   subsets: ['latin', 'cyrillic'],
 })
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: 'Unitcore',
-    template: '%s — Unitcore',
-  },
-  description: 'A shared budget you manage by talking to your AI client.',
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await lang()
+  // An unsupported locale 404s in the layout below; there is no dictionary to
+  // describe it with, so the page inherits Next's defaults for the tab title.
+  if (!isLocale(locale)) return {}
+  const dict = await getDictionary()
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: 'Unitcore',
+      template: '%s — Unitcore',
+    },
+    description: dict.site.description,
+  }
 }
 
 export function generateStaticParams() {

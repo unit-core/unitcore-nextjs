@@ -1,4 +1,7 @@
 {
+  "site": {
+    "description": "Your data in one place, and your AI assistant working with it over MCP."
+  },
   "nav": {
     "home": "Home",
     "blog": "Articles",
@@ -47,12 +50,9 @@
       "action": "Connect an assistant"
     }
   },
-  "home": {
-    "tagline": "Your data, in your assistant."
-  },
   "blog": {
     "title": "Articles",
-    "subtitle": "Guides and notes about running your budget through an AI client.",
+    "subtitle": "Guides and notes about connecting an AI assistant to your own data.",
     "readMore": "Read",
     "backToIndex": "All articles",
     "publishedOn": "Published",
