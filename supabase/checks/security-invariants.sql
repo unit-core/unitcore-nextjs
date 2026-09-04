@@ -28,7 +28,7 @@ begin
     into bad_views
   from pg_class c
   join pg_namespace n on n.oid = c.relnamespace
-  where n.nspname in ('public', 'budget')
+  where n.nspname in ('public', 'budget', 'tasks')
     and (
       (c.relkind = 'v' and coalesce(array_to_string(c.reloptions, ','), '') not like '%security_invoker=true%')
       or c.relkind = 'm'
@@ -39,7 +39,7 @@ begin
   from pg_proc p
   join pg_namespace n on n.oid = p.pronamespace
   where p.prosecdef
-    and n.nspname in ('public', 'budget', 'private')
+    and n.nspname in ('public', 'budget', 'private', 'tasks')
     and (
       p.proretset
       or p.prorettype in ('record'::regtype, 'refcursor'::regtype)

@@ -25,6 +25,31 @@ export function refusalMessage(
 }
 
 /**
+ * The same job for the `tasks` schema, which has no RPC layer at all: a task is
+ * data inside a boundary access control has already drawn, so the client writes
+ * to the tables directly and every expected outcome arrives as a trigger
+ * exception instead of `{ok: false, code}`.
+ *
+ * The key is `error.hint`, never `error.message`. The messages those triggers
+ * raise are written in Russian and change with the migration that carries them;
+ * `hint` is a machine key added for this client specifically, and the
+ * dictionary names its strings after those hints so no lookup table has to be
+ * kept in step with the database.
+ *
+ * `23505` is the one outcome with no hint of its own: it arrives from a unique
+ * index on a list or a label name, and both mean "that name is taken".
+ */
+export function taskRefusal(
+  error: PostgrestError,
+  messages: Record<string, string> & { notAllowed: string; duplicateName: string; unknown: string }
+): string {
+  if (error.code === '42501') return messages.notAllowed
+  if (error.hint && messages[error.hint]) return messages[error.hint]
+  if (error.code === '23505') return messages.duplicateName
+  return messages.unknown
+}
+
+/**
  * What every membership RPC answers with. The functions return `jsonb`, never
  * rows, and they say three different things in three different ways:
  *

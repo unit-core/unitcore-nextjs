@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { AppNav } from '@/components/app-nav'
 import { UserMenu } from '@/components/user-menu'
 import { articleLocaleMap } from '@/content/blog/registry'
 import { type Locale } from '@/lib/i18n/config'
@@ -25,6 +26,7 @@ export function SiteHeader({ locale, dict }: SiteHeaderProps) {
           >
             {dict.blog}
           </Link>
+          <AppNav dict={dict} />
         </nav>
         <UserMenu dict={dict} articleLocales={articleLocaleMap()} />
       </div>

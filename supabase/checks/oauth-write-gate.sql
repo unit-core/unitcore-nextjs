@@ -117,7 +117,18 @@ begin
       ('public.profiles', 'UPDATE'),
       ('public.space_members', 'INSERT'),
       ('public.spaces', 'INSERT'),
-      ('public.spaces', 'UPDATE')
+      ('public.spaces', 'UPDATE'),
+      ('tasks.labels', 'INSERT'),
+      ('tasks.labels', 'UPDATE'),
+      ('tasks.labels', 'DELETE'),
+      ('tasks.lists', 'INSERT'),
+      ('tasks.lists', 'UPDATE'),
+      ('tasks.lists', 'DELETE'),
+      ('tasks.task_labels', 'INSERT'),
+      ('tasks.task_labels', 'DELETE'),
+      ('tasks.tasks', 'INSERT'),
+      ('tasks.tasks', 'UPDATE'),
+      ('tasks.tasks', 'DELETE')
   ),
   actual (tbl, cmd) as (
     select format('%s.%s', schemaname, tablename), cmd

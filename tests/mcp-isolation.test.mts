@@ -41,6 +41,9 @@ const READ_ARGS: Record<string, Record<string, unknown>> = {
   list_categories: {},
   list_transactions: { limit: 50 },
   summary: {},
+  list_task_lists: {},
+  list_tasks: { filter: 'all', include_subtasks: true, limit: 50 },
+  my_tasks: { limit: 50 },
 }
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi

@@ -6,6 +6,7 @@ import { z } from 'zod'
 // through Node's type stripping, which has no tsconfig path aliases. Anything
 // this file reaches has to import the same way.
 import { CONNECTIONS_URL, CONNECTOR_NAME } from '../connectors.ts'
+import { TASK_READ_TOOLS, TASK_WRITE_TOOLS, registerTaskTools } from './tasks.ts'
 
 export interface ToolContext {
   http?: { authInfo?: AuthInfo }
@@ -25,10 +26,17 @@ export interface ToolDeps {
 }
 
 /** Tools that only read. The isolation test runs every one of them. */
-export const READ_TOOLS = ['list_spaces', 'list_categories', 'list_transactions', 'summary'] as const
+export const READ_TOOLS = [
+  'list_spaces',
+  'list_categories',
+  'list_transactions',
+  'summary',
+  ...TASK_READ_TOOLS,
+] as const
 
 /** Tools that write. Excluded from the isolation test so it leaves no rows behind. */
 export const WRITE_TOOLS = [
+  ...TASK_WRITE_TOOLS,
   'create_space',
   'rename_space',
   'create_categories',
@@ -98,6 +106,10 @@ async function resolveSpaceId(db: SupabaseClient, spaceId?: string) {
 
 export function registerTools(server: McpServer, deps: ToolDeps) {
   const { clientFor, userIdFor } = deps
+
+  // The second product's tools, registered from their own module: the two
+  // schemas share nothing but this server and the caller's token.
+  registerTaskTools(server, deps)
 
   server.registerTool(
     'list_spaces',

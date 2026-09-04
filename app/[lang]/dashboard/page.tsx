@@ -7,6 +7,7 @@ import { WalletMinimal } from 'lucide-react'
 import { CurrencyCard } from '@/components/dashboard/currency-card'
 import { RecentTransactions } from '@/components/dashboard/recent-transactions'
 import { SpaceFilter } from '@/components/dashboard/space-filter'
+import { TasksCard } from '@/components/dashboard/tasks-card'
 import { Button } from '@/components/ui/button'
 import {
   Empty,
@@ -48,47 +49,56 @@ export default async function DashboardPage(props: PageProps<'/[lang]/dashboard'
           </Suspense>
         </div>
 
-        {isEmpty ? (
-          <Empty className="rounded-[min(var(--radius-4xl),24px)] bg-card py-16 shadow-sm ring-1 ring-foreground/5 dark:ring-foreground/10">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <WalletMinimal />
-              </EmptyMedia>
-              <EmptyTitle>{dict.dashboard.empty.title}</EmptyTitle>
-              <EmptyDescription>{dict.dashboard.empty.description}</EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              {/* nativeButton={false} because this renders an <a>: Base UI keeps
-                  button semantics on by default and warns that a link pretending
-                  to be a button breaks keyboard and form behaviour. */}
-              <Button
-                variant="outline"
-                nativeButton={false}
-                render={<Link href={localeHref(locale, '/settings/connections')} />}
-              >
-                {dict.dashboard.empty.action}
-              </Button>
-            </EmptyContent>
-          </Empty>
-        ) : (
-          // items-start keeps every card at its own height instead of stretching
-          // the short ones to match the tallest in the row — the loose, uneven
-          // tiling the shadcn.com landing page is built out of.
-          <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {currencies.map((widget) => (
-              <CurrencyCard
-                key={widget.currency}
-                locale={locale}
-                dict={dict.dashboard}
-                widget={widget}
-                monthStart={monthStart}
-              />
-            ))}
-            {recent.length > 0 && (
-              <RecentTransactions locale={locale} dict={dict.dashboard} items={recent} />
-            )}
-          </div>
-        )}
+        {/* items-start keeps every card at its own height instead of stretching
+            the short ones to match the tallest in the row — the loose, uneven
+            tiling the shadcn.com landing page is built out of.
+
+            The tasks card sits in the same grid whether or not there is a budget
+            to total up: the two products share a dashboard but not a reason to
+            be empty, and an account with tasks and no transactions should see
+            its tasks rather than only an invitation to connect an assistant. */}
+        <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {isEmpty ? (
+            <Empty className="rounded-[min(var(--radius-4xl),24px)] bg-card py-16 shadow-sm ring-1 ring-foreground/5 md:col-span-1 xl:col-span-2 dark:ring-foreground/10">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <WalletMinimal />
+                </EmptyMedia>
+                <EmptyTitle>{dict.dashboard.empty.title}</EmptyTitle>
+                <EmptyDescription>{dict.dashboard.empty.description}</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                {/* nativeButton={false} because this renders an <a>: Base UI keeps
+                    button semantics on by default and warns that a link pretending
+                    to be a button breaks keyboard and form behaviour. */}
+                <Button
+                  variant="outline"
+                  nativeButton={false}
+                  render={<Link href={localeHref(locale, '/settings/connections')} />}
+                >
+                  {dict.dashboard.empty.action}
+                </Button>
+              </EmptyContent>
+            </Empty>
+          ) : (
+            <>
+              {currencies.map((widget) => (
+                <CurrencyCard
+                  key={widget.currency}
+                  locale={locale}
+                  dict={dict.dashboard}
+                  widget={widget}
+                  monthStart={monthStart}
+                />
+              ))}
+              {recent.length > 0 && (
+                <RecentTransactions locale={locale} dict={dict.dashboard} items={recent} />
+              )}
+            </>
+          )}
+
+          <TasksCard spaceId={spaceId} locale={locale} dict={dict.tasks} />
+        </div>
       </div>
     </main>
   )
