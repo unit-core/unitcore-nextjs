@@ -102,6 +102,18 @@ const failWrite = (error: PostgrestError) => {
 const failNoRow = (lead: string) =>
   fail(`${lead}. It may have been deleted, or it may belong to a space you are not a member of.`)
 
+/**
+ * Columns of `tasks.task_cards`, the view — not of the table behind it.
+ *
+ * Half of them exist nowhere else: `list_name`, `assignee_name`, `is_done` and
+ * the subtask counters are resolved by the view, and the table has no such
+ * columns at all. So this list may only ever be selected `from('task_cards')`.
+ * A write goes to `tasks.tasks`, whose `RETURNING` can hand back its own
+ * columns and nothing more — ask it for these and PostgREST answers `42703,
+ * column tasks.assignee_name does not exist`, which reads like a broken
+ * migration rather than the wrong relation being asked. {@link readCard} is
+ * what a write uses instead.
+ */
 const TASK_COLUMNS =
   'id, space_id, list_id, list_name, parent_id, title, notes, priority, due_at, due_has_time, ' +
   'assignee_name, is_mine, is_done, completed_at, completed_by_name, created_by_name, ' +
@@ -156,6 +168,25 @@ const shapeTask = (row: TaskRow) => ({
   created_by: row.created_by_name,
   subtasks: { done: row.subtask_done_count, total: row.subtask_count },
 })
+
+/**
+ * The card a write should answer with, read back through the view.
+ *
+ * Two round trips instead of one, and worth it: the answer a model gets back
+ * carries the list and the assignee by name and the counters the triggers just
+ * recomputed, none of which the table could have returned. It is also the only
+ * honest way to report a value the server normalised on the way in.
+ */
+async function readCard(db: SupabaseClient, id: string) {
+  const { data, error } = await db
+    .schema(SCHEMA)
+    .from('task_cards')
+    .select(TASK_COLUMNS)
+    .eq('id', id)
+    .limit(1)
+  if (error) throw new Error(error.message)
+  return (data?.[0] ?? null) as unknown as TaskRow | null
+}
 
 /** Falls back to the personal space, which a trigger guarantees exists. */
 async function resolveSpaceId(db: SupabaseClient, spaceId?: string) {
@@ -445,10 +476,13 @@ export function registerTaskTools(server: McpServer, deps: ToolDeps) {
             ...(assigneeId !== undefined ? { assignee_id: assigneeId } : {}),
             ...(dueValues ?? {}),
           })
-          .select(TASK_COLUMNS)
+          // The table's own column, because that is all a table can return.
+          .select('id')
         if (error) return failWrite(error)
         if (!data?.length) return failNoRow('The task was not created')
-        return okUntrusted(shapeTask(data[0] as unknown as TaskRow))
+
+        const card = await readCard(db, data[0].id as string)
+        return card ? okUntrusted(shapeTask(card)) : failNoRow('The task was not created')
       })
   )
 
@@ -504,10 +538,12 @@ export function registerTaskTools(server: McpServer, deps: ToolDeps) {
           .from('tasks')
           .update(patch)
           .eq('id', task_id)
-          .select(TASK_COLUMNS)
+          .select('id')
         if (error) return failWrite(error)
         if (!data?.length) return failNoRow('That task was not changed')
-        return okUntrusted(shapeTask(data[0] as unknown as TaskRow))
+
+        const card = await readCard(db, task_id)
+        return card ? okUntrusted(shapeTask(card)) : failNoRow('That task was not changed')
       })
   )
 
