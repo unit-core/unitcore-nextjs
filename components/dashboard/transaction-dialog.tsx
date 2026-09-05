@@ -24,7 +24,9 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -44,6 +46,7 @@ import {
   parseAmount,
   todayInput,
   type BudgetMessages,
+  type Category,
   type CategoryKind,
 } from '@/lib/budget/model'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
@@ -116,6 +119,40 @@ function MenuButton({ children, disabled }: { children: React.ReactNode; disable
           <ChevronDownIcon className="size-3.5 shrink-0" />
         </Button>
       }
+    />
+  )
+}
+
+/** Both kinds, expense first: it is the ordinary one, and the one a line with no
+ *  category at all is counted as. */
+const KINDS = ['expense', 'income'] as const
+
+/**
+ * Which way the money went, as a dot with the word behind it.
+ *
+ * Built like `PriorityDot` on a task, down to the `title`: colour carries it at
+ * a glance, and the name is there for anyone the colour does not reach. The two
+ * tones are the ones the currency card already spends — destructive for money
+ * going out, emerald for money coming in — so the dashboard does not explain the
+ * same thing twice in two palettes.
+ */
+function KindDot({
+  kind,
+  d,
+  className,
+}: {
+  kind: CategoryKind
+  d: FormDictionary
+  className?: string
+}) {
+  return (
+    <span
+      title={kind === 'expense' ? d.expense : d.income}
+      className={cn(
+        'size-1.5 shrink-0 rounded-full',
+        kind === 'expense' ? 'bg-destructive' : 'bg-emerald-500',
+        className
+      )}
     />
   )
 }
@@ -226,8 +263,8 @@ function TransactionForm({
   }
 
   const spaceName = (id: string) => spaces.find((space) => space.id === id)?.name ?? ''
-  const categoryLabel = (id: string | null) =>
-    (id ? categories.find((category) => category.id === id)?.name : null) ?? d.noCategory
+  const chosen = (id: string | null): Category | undefined =>
+    id ? categories.find((category) => category.id === id) : undefined
 
   const titleId = useId()
   const dateId = useId()
@@ -292,118 +329,140 @@ function TransactionForm({
 
       <div className="flex flex-col gap-2">
         <Label className="text-xs text-muted-foreground">{d.items}</Label>
-        {lines.map((line) => (
-          <div key={line.key} className="flex flex-col gap-1.5 rounded-lg bg-muted/50 p-2">
-            <div className="flex items-center gap-1.5">
-              <Input
-                value={line.name}
-                onChange={(event) => editLine(line.key, { name: event.target.value })}
-                placeholder={d.itemNamePlaceholder}
-                aria-label={d.itemNamePlaceholder}
-                disabled={isSaving}
-              />
-              <Input
-                value={line.amount}
-                onChange={(event) => editLine(line.key, { amount: event.target.value })}
-                inputMode="decimal"
-                placeholder={d.amountPlaceholder}
-                aria-label={d.amountPlaceholder}
-                aria-invalid={(line.amount !== '' && parseAmount(line.amount) === null) || undefined}
-                disabled={isSaving}
-                className="w-28 shrink-0 text-right tabular-nums"
-              />
-              {/* Absent rather than disabled on the last line: a transaction with
-                  no items is one nothing can be read back from. */}
-              {lines.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={d.removeItem}
+        {lines.map((line) => {
+          const category = chosen(line.categoryId)
+          return (
+            <div key={line.key} className="flex flex-col gap-1.5 rounded-lg bg-muted/50 p-2">
+              <div className="flex items-center gap-1.5">
+                <Input
+                  value={line.name}
+                  onChange={(event) => editLine(line.key, { name: event.target.value })}
+                  placeholder={d.itemNamePlaceholder}
+                  aria-label={d.itemNamePlaceholder}
                   disabled={isSaving}
-                  onClick={() => setLines((current) => current.filter((row) => row.key !== line.key))}
-                >
-                  <XIcon />
-                </Button>
+                />
+                <Input
+                  value={line.amount}
+                  onChange={(event) => editLine(line.key, { amount: event.target.value })}
+                  inputMode="decimal"
+                  placeholder={d.amountPlaceholder}
+                  aria-label={d.amountPlaceholder}
+                  aria-invalid={(line.amount !== '' && parseAmount(line.amount) === null) || undefined}
+                  disabled={isSaving}
+                  className="w-28 shrink-0 text-right tabular-nums"
+                />
+                {/* Absent rather than disabled on the last line: a transaction with
+                    no items is one nothing can be read back from. */}
+                {lines.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={d.removeItem}
+                    disabled={isSaving}
+                    onClick={() => setLines((current) => current.filter((row) => row.key !== line.key))}
+                  >
+                    <XIcon />
+                  </Button>
+                )}
+              </div>
+
+              {creatingFor === line.key ? (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Input
+                    autoFocus
+                    value={categoryName}
+                    onChange={(event) => setCategoryName(event.target.value)}
+                    placeholder={d.categoryName}
+                    aria-label={d.categoryName}
+                    disabled={isCreatingCategory}
+                    className="h-7 min-w-32 flex-1"
+                  />
+                  {/* Expense or income is the only thing that decides which side of
+                      the dashboard the money lands on, so it is two visible buttons
+                      rather than a menu to go looking in. */}
+                  {KINDS.map((kind) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      onClick={() => setCategoryKind(kind)}
+                      aria-pressed={categoryKind === kind}
+                      className={cn(
+                        'rounded-full border px-2.5 py-1 text-xs transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+                        categoryKind === kind
+                          ? 'border-transparent bg-primary text-primary-foreground'
+                          : 'border-border text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {kind === 'expense' ? d.expense : d.income}
+                    </button>
+                  ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={isCreatingCategory || !categoryName.trim()}
+                    onClick={() => void saveCategory()}
+                  >
+                    {d.createCategory}
+                  </Button>
+                </div>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={isSaving || !target}
+                        className="h-7 self-start px-2 text-muted-foreground"
+                      >
+                        {category && <KindDot kind={category.kind} d={d} />}
+                        <span className="truncate">{category?.name ?? d.noCategory}</span>
+                        <ChevronDownIcon className="size-3.5 shrink-0" />
+                      </Button>
+                    }
+                  />
+                  <DropdownMenuContent align="start" className="min-w-56">
+                    <DropdownMenuItem onClick={() => editLine(line.key, { categoryId: null })}>
+                      {d.noCategory}
+                    </DropdownMenuItem>
+                    {/* Grouped under the two words rather than labelled row by row.
+                        Names are not unique in a space and nothing stops "Rent"
+                        existing as both kinds, so the heading a name sits under is
+                        what tells the two apart — and the dot beside it is what
+                        makes the same dot legible on the closed button. */}
+                    {KINDS.map((kind) => {
+                      const group = categories.filter((entry) => entry.kind === kind)
+                      if (group.length === 0) return null
+                      return (
+                        <DropdownMenuGroup key={kind}>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>
+                            {kind === 'expense' ? d.expense : d.income}
+                          </DropdownMenuLabel>
+                          {group.map((entry) => (
+                            <DropdownMenuItem
+                              key={entry.id}
+                              onClick={() => editLine(line.key, { categoryId: entry.id })}
+                            >
+                              <KindDot kind={entry.kind} d={d} />
+                              <span className="truncate">{entry.name}</span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuGroup>
+                      )
+                    })}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setCreatingFor(line.key)}>
+                      {d.newCategory}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
-
-            {creatingFor === line.key ? (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Input
-                  autoFocus
-                  value={categoryName}
-                  onChange={(event) => setCategoryName(event.target.value)}
-                  placeholder={d.categoryName}
-                  aria-label={d.categoryName}
-                  disabled={isCreatingCategory}
-                  className="h-7 min-w-32 flex-1"
-                />
-                {/* Expense or income is the only thing that decides which side of
-                    the dashboard the money lands on, so it is two visible buttons
-                    rather than a menu to go looking in. */}
-                {(['expense', 'income'] as const).map((kind) => (
-                  <button
-                    key={kind}
-                    type="button"
-                    onClick={() => setCategoryKind(kind)}
-                    aria-pressed={categoryKind === kind}
-                    className={cn(
-                      'rounded-full border px-2.5 py-1 text-xs transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
-                      categoryKind === kind
-                        ? 'border-transparent bg-primary text-primary-foreground'
-                        : 'border-border text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {kind === 'expense' ? d.expense : d.income}
-                  </button>
-                ))}
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={isCreatingCategory || !categoryName.trim()}
-                  onClick={() => void saveCategory()}
-                >
-                  {d.createCategory}
-                </Button>
-              </div>
-            ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={isSaving || !target}
-                      className="h-7 self-start px-2 text-muted-foreground"
-                    >
-                      <span className="truncate">{categoryLabel(line.categoryId)}</span>
-                      <ChevronDownIcon className="size-3.5 shrink-0" />
-                    </Button>
-                  }
-                />
-                <DropdownMenuContent align="start" className="min-w-56">
-                  <DropdownMenuItem onClick={() => editLine(line.key, { categoryId: null })}>
-                    {d.noCategory}
-                  </DropdownMenuItem>
-                  {categories.map((category) => (
-                    <DropdownMenuItem
-                      key={category.id}
-                      onClick={() => editLine(line.key, { categoryId: category.id })}
-                    >
-                      {category.name}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setCreatingFor(line.key)}>
-                    {d.newCategory}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-        ))}
+          )
+        })}
 
         <Button
           type="button"
