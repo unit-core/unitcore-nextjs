@@ -26,6 +26,7 @@ const PAGE_SIZE = 1000
  */
 interface ItemRow {
   id: string
+  transaction_id: string
   name: string
   amount: string | number
   currency_code: string
@@ -68,6 +69,12 @@ export interface CurrencyWidget {
 
 export interface RecentItem {
   id: string
+  /**
+   * The transaction this line belongs to. The list shows items, but everything
+   * that can be *changed* about one — the date, the currency, its neighbours —
+   * belongs to the transaction, so that is what a tap opens.
+   */
+  transactionId: string
   name: string
   category: string | null
   amount: number
@@ -117,7 +124,9 @@ async function fetchWindow(from: Date, to: Date, spaceId?: string): Promise<Item
     let query = supabase
       .schema('budget')
       .from('transaction_items_signed')
-      .select('id, name, amount, currency_code, occurred_at, category_name, category_kind, space_id')
+      .select(
+        'id, transaction_id, name, amount, currency_code, occurred_at, category_name, category_kind, space_id'
+      )
       // Half-open on purpose: `occurred_at` is timestamptz, so `lte` against a
       // bare date compares with midnight and swallows the whole last day.
       .gte('occurred_at', from.toISOString())
@@ -225,6 +234,7 @@ export async function getDashboardData({ spaceId }: { spaceId?: string } = {}): 
 
   const recent: RecentItem[] = rows.slice(0, RECENT_LIMIT).map((row) => ({
     id: row.id,
+    transactionId: row.transaction_id,
     name: row.name,
     category: row.category_name,
     amount: Number(row.amount),

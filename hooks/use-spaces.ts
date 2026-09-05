@@ -29,7 +29,13 @@ interface SpaceRow {
   created_at: string
 }
 
-export const useSpaces = () => {
+/**
+ * `enabled: false` holds the read back until whatever needs the list is on
+ * screen. The dashboard mounts several add-transaction buttons at once and each
+ * one would otherwise ask for the same three answers before anybody has clicked
+ * anything; the default is true, so every existing caller is unchanged.
+ */
+export const useSpaces = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const [spaces, setSpaces] = useState<SpaceSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
@@ -41,6 +47,8 @@ export const useSpaces = () => {
   const userId = useRef<string | null>(null)
 
   useEffect(() => {
+    if (!enabled) return
+
     let active = true
 
     const load = async () => {
@@ -112,7 +120,7 @@ export const useSpaces = () => {
     return () => {
       active = false
     }
-  }, [reloadToken])
+  }, [enabled, reloadToken])
 
   /**
    * `spaces.owner_id` has no default and RLS demands it equal `auth.uid()`, so

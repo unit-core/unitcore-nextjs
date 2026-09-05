@@ -1,14 +1,13 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import { lang } from 'next/root-params'
-import Link from 'next/link'
 import { WalletMinimal } from 'lucide-react'
 
+import { AddTransaction } from '@/components/dashboard/add-transaction'
 import { CurrencyCard } from '@/components/dashboard/currency-card'
 import { RecentTransactions } from '@/components/dashboard/recent-transactions'
 import { SpaceFilter } from '@/components/dashboard/space-filter'
 import { TasksCard } from '@/components/dashboard/tasks-card'
-import { Button } from '@/components/ui/button'
 import {
   Empty,
   EmptyContent,
@@ -20,7 +19,6 @@ import {
 import { getDashboardData } from '@/lib/budget/dashboard'
 import { isLocale } from '@/lib/i18n/config'
 import { getDictionary } from '@/lib/i18n/dictionaries'
-import { localeHref } from '@/lib/i18n/urls'
 
 // No middleware entry is needed, and none should be added: /dashboard is absent
 // from PUBLIC_PREFIXES in lib/supabase/middleware.ts, so an unauthenticated
@@ -67,17 +65,12 @@ export default async function DashboardPage(props: PageProps<'/[lang]/dashboard'
                 <EmptyTitle>{dict.dashboard.empty.title}</EmptyTitle>
                 <EmptyDescription>{dict.dashboard.empty.description}</EmptyDescription>
               </EmptyHeader>
+              {/* The way out of an empty dashboard is to write something in it.
+                  Connecting an assistant is the other way, and it lives in
+                  settings: offering it here made the page's own answer to "how
+                  do I record a transaction" a link away from the page. */}
               <EmptyContent>
-                {/* nativeButton={false} because this renders an <a>: Base UI keeps
-                    button semantics on by default and warns that a link pretending
-                    to be a button breaks keyboard and form behaviour. */}
-                <Button
-                  variant="outline"
-                  nativeButton={false}
-                  render={<Link href={localeHref(locale, '/settings/connections')} />}
-                >
-                  {dict.dashboard.empty.action}
-                </Button>
+                <AddTransaction dict={dict.dashboard} spaceId={spaceId} />
               </EmptyContent>
             </Empty>
           ) : (
@@ -89,6 +82,7 @@ export default async function DashboardPage(props: PageProps<'/[lang]/dashboard'
                   dict={dict.dashboard}
                   widget={widget}
                   monthStart={monthStart}
+                  spaceId={spaceId}
                 />
               ))}
               {recent.length > 0 && (

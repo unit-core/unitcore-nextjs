@@ -1,7 +1,8 @@
-import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Item, ItemContent } from '@/components/ui/item'
 import { Progress } from '@/components/ui/progress'
+import { AddTransaction } from '@/components/dashboard/add-transaction'
 import { DashboardCard } from '@/components/dashboard/dashboard-card'
 import { MonthBars } from '@/components/dashboard/month-bars'
 import { type CurrencyWidget } from '@/lib/budget/dashboard'
@@ -23,11 +24,14 @@ export function CurrencyCard({
   dict,
   widget,
   monthStart,
+  spaceId,
 }: {
   locale: Locale
   dict: Dictionary['dashboard']
   widget: CurrencyWidget
   monthStart: string
+  /** The dashboard's `?space=` filter, passed on to the form this card opens. */
+  spaceId?: string
 }) {
   const change = percentChange(widget.total, widget.previousTotal)
 
@@ -61,6 +65,12 @@ export function CurrencyCard({
             })}
           </Badge>
         )}
+        {/* Once there is something to total up the empty state is gone, and with
+            it the only way to write a transaction by hand. It belongs here, on
+            the card whose currency it will be written in. */}
+        <CardAction>
+          <AddTransaction dict={dict} spaceId={spaceId} currency={widget.currency} variant="ghost" />
+        </CardAction>
       </CardHeader>
 
       <CardContent>

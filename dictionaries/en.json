@@ -46,8 +46,41 @@
     "recentDescription": "The latest entries across your spaces.",
     "empty": {
       "title": "Nothing to total up yet",
-      "description": "Once transactions land in one of your spaces, this page totals them up by month and by currency.",
-      "action": "Connect an assistant"
+      "description": "Once transactions land in one of your spaces, this page totals them up by month and by currency."
+    },
+    "form": {
+      "action": "Add transaction",
+      "newTitle": "New transaction",
+      "newDescription": "One entry, with a line for everything it paid for.",
+      "editTitle": "Transaction",
+      "editDescription": "Change what was recorded, or what it counts as.",
+      "loading": "Loading...",
+      "notFound": "This transaction no longer exists.",
+      "space": "Space",
+      "titleField": "Title",
+      "titlePlaceholder": "Supermarket",
+      "date": "Date",
+      "currency": "Currency",
+      "items": "Lines",
+      "itemNamePlaceholder": "Bread",
+      "amountPlaceholder": "Amount",
+      "category": "Category",
+      "noCategory": "No category",
+      "newCategory": "New category...",
+      "categoryName": "Category name",
+      "expense": "Expense",
+      "income": "Income",
+      "createCategory": "Create",
+      "addItem": "Add line",
+      "removeItem": "Remove line",
+      "save": "Save",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "errors": {
+        "notAllowed": "You cannot write to this space.",
+        "silent": "Nothing was saved. Reload the page and try again.",
+        "unknown": "Could not save the transaction. Try again."
+      }
     }
   },
   "tasks": {
