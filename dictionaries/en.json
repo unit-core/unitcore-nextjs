@@ -128,8 +128,8 @@
       "title": "Tasks",
       "description": "What is still open in your spaces.",
       "all": "All",
-      "empty": "Nothing open. Add a task on the tasks page.",
-      "more": "All tasks"
+      "more": "All tasks",
+      "overflow": "{count} more"
     },
     "errors": {
       "notAllowed": "Not allowed: this can only be changed from inside the space it belongs to.",
