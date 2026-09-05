@@ -208,6 +208,39 @@ export const useTransaction = (transactionId: string | null, messages: BudgetMes
     [transaction, messages]
   )
 
+  /**
+   * The whole entry, items and all.
+   *
+   * One statement: `transaction_items` points at its parent with `on delete
+   * cascade`, so the lines go with it in the database rather than in a loop
+   * here. There is no trash for a transaction the way there is for a task —
+   * nothing in `budget` is soft-deleted — which is why the button that reaches
+   * this asks first.
+   */
+  const deleteTransaction = useCallback(async () => {
+    if (!transaction) return false
+
+    setIsSaving(true)
+    const supabase = createClient()
+    const outcome = checkBudgetWrite(
+      await supabase
+        .schema(BUDGET_SCHEMA)
+        .from('transactions')
+        .delete()
+        .eq('id', transaction.id)
+        .select('id'),
+      messages
+    )
+    setIsSaving(false)
+
+    if (!outcome.ok) {
+      setError(outcome.message)
+      return false
+    }
+    setError(null)
+    return true
+  }, [transaction, messages])
+
   return {
     transaction,
     isLoading: transactionId !== null && !isCurrent,
@@ -217,5 +250,6 @@ export const useTransaction = (transactionId: string | null, messages: BudgetMes
     /** Read, and there was nothing there — deleted, or never visible to this reader. */
     isMissing: isCurrent && transaction === null,
     updateTransaction,
+    deleteTransaction,
   }
 }

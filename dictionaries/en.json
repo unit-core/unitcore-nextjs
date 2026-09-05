@@ -76,6 +76,10 @@
       "save": "Save",
       "saving": "Saving...",
       "cancel": "Cancel",
+      "deleteAction": "Delete",
+      "deleteTitle": "Delete this transaction?",
+      "deleteBody": "Every line in it goes with it, and there is no undo.",
+      "deleting": "Deleting...",
       "errors": {
         "notAllowed": "You cannot write to this space.",
         "silent": "Nothing was saved. Reload the page and try again.",

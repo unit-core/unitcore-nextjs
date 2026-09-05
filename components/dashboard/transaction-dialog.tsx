@@ -1,8 +1,17 @@
 'use client'
 
 import { useId, useMemo, useRef, useState } from 'react'
-import { ChevronDownIcon, PlusIcon, XIcon } from 'lucide-react'
+import { ChevronDownIcon, PlusIcon, Trash2Icon, XIcon } from 'lucide-react'
 
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -127,6 +136,7 @@ function TransactionForm({
   isSaving,
   error,
   onCancel,
+  onDelete,
   onSubmit,
 }: {
   d: FormDictionary
@@ -137,6 +147,8 @@ function TransactionForm({
   isSaving: boolean
   error: string | null
   onCancel: () => void
+  /** Absent for a transaction that does not exist yet. */
+  onDelete?: () => void
   onSubmit: (draft: SubmittedTransaction) => void
 }) {
   const { spaces } = useSpaces({ enabled: !fixedSpaceId })
@@ -418,6 +430,21 @@ function TransactionForm({
       )}
 
       <DialogFooter>
+        {/* Left of the way out, and away from Save: this is the one button in
+            the dialog that cannot be taken back, so it should not sit under the
+            finger that was reaching for the other one. */}
+        {onDelete && (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isSaving}
+            onClick={onDelete}
+            className="text-destructive hover:text-destructive sm:mr-auto"
+          >
+            <Trash2Icon />
+            {d.deleteAction}
+          </Button>
+        )}
         <Button type="button" variant="outline" disabled={isSaving} onClick={onCancel}>
           {d.cancel}
         </Button>
@@ -467,11 +494,25 @@ export function TransactionDialog({
   const created = useCreateTransaction(messages)
   const edited = useTransaction(open ? transactionId : null, messages)
   const isEditing = transactionId !== null
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
 
   const close = () => {
     created.setError(null)
     edited.setError(null)
+    setIsConfirmingDelete(false)
     onOpenChange(false)
+  }
+
+  const remove = async () => {
+    if (!(await edited.deleteTransaction())) {
+      // The sentence is on the form behind this, so the confirmation gets out of
+      // its way rather than holding the reader in front of a failed question.
+      setIsConfirmingDelete(false)
+      return
+    }
+    setIsConfirmingDelete(false)
+    onOpenChange(false)
+    onSaved()
   }
 
   const save = async (draft: SubmittedTransaction) => {
@@ -546,10 +587,40 @@ export function TransactionDialog({
             isSaving={created.isSaving || edited.isSaving}
             error={created.error ?? edited.error}
             onCancel={close}
+            onDelete={existing ? () => setIsConfirmingDelete(true) : undefined}
             onSubmit={(draft) => void save(draft)}
           />
         )}
       </DialogContent>
+
+      {/* Inside the dialog it interrupts, so closing it leaves the form open
+          exactly as it was. Nothing in `budget` is soft-deleted — there is no
+          trash to fish a transaction back out of — so the question is asked
+          before the statement, not undone after it. */}
+      <AlertDialog
+        open={isConfirmingDelete}
+        onOpenChange={(next) => {
+          if (!next) setIsConfirmingDelete(false)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{d.deleteTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{d.deleteBody}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={edited.isSaving}>{d.cancel}</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={edited.isSaving}
+              onClick={() => void remove()}
+            >
+              {edited.isSaving ? d.deleting : d.deleteAction}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }
