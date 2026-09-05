@@ -158,4 +158,17 @@
   html {
     @apply font-sans;
   }
+  /* Tailwind v4 dropped the `cursor: pointer` its Preflight used to put on
+     buttons, so every control in the app was left with the arrow a `<button>`
+     gets from the browser and nothing on a page looked pressable. Base UI builds
+     its controls out of real buttons — the avatar menu's trigger, a checkbox, a
+     task row — so one rule covers them, and anything that only plays a button
+     says so by role. Disabled controls keep the arrow: nothing happens when they
+     are clicked. Menu items carry their own `cursor-pointer` in
+     components/ui/dropdown-menu.tsx, where the utility would beat this rule
+     anyway. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
 }
